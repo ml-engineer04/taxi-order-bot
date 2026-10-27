@@ -27,11 +27,6 @@ logger = logging.getLogger(__name__)
 
 def is_chat_monitored(chat_id: int, settings: Settings, extra_monitored_ids: Optional[Set[int]] = None) -> bool:
     """Check if chat_id matches monitored group IDs, tolerating -100 prefix variances."""
-    from app.services.group_manager import get_group_manager
-    group_mgr = get_group_manager(settings)
-    if group_mgr.is_monitored(chat_id):
-        return True
-
     monitored_set: Set[int] = set()
 
     if extra_monitored_ids:
@@ -40,6 +35,11 @@ def is_chat_monitored(chat_id: int, settings: Settings, extra_monitored_ids: Opt
     numeric_ids = settings.get_public_group_numeric_ids()
     if numeric_ids:
         monitored_set.update(numeric_ids)
+
+    from app.services.group_manager import get_group_manager
+    group_mgr = get_group_manager(settings)
+    if group_mgr._active_ids:
+        monitored_set.update(group_mgr._active_ids)
 
     if not monitored_set and not settings.public_group_id:
         # If no public targets specified, monitor all groups user is in
