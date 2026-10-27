@@ -1,0 +1,208 @@
+text,label,script
+"Toshkentdan Samarqandga 2 ta joy kerak",PASSENGER_REQUEST,latin
+"Chirchiqdan Toshkentga ketishim kerak",PASSENGER_REQUEST,latin
+"Ertaga Buxoroga boradigan mashina kerak",PASSENGER_REQUEST,latin
+"2 kishimiz, Andijonga ketamiz",PASSENGER_REQUEST,latin
+"Kim meni aeroportdan olib ketishi mumkin?",PASSENGER_REQUEST,latin
+"Namanganga taksi kerak, narxi qancha?",PASSENGER_REQUEST,latin
+"Bugun kechqurun Farg'onaga ketishim kerak",PASSENGER_REQUEST,latin
+"Olmaliqdan Toshkentga bitta joy kerek",PASSENGER_REQUEST,latin
+"Navoiyga 3 kishi ketamiz taksi bormi",PASSENGER_REQUEST,latin
+"Qarshiga mashina bormikan hozir yuradigan",PASSENGER_REQUEST,latin
+"Farg'onaga 4 kishiga joy kerak",PASSENGER_REQUEST,latin
+"Bekoboddan Toshkent vokzaliga ketaman",PASSENGER_REQUEST,latin
+"Urganchdan Xivaga taksi kerak 2 kishi",PASSENGER_REQUEST,latin
+"Gulistonga ketadigan moshina bormi?",PASSENGER_REQUEST,latin
+"Jizzaxga bitta odam bor yuradigan bormi",PASSENGER_REQUEST,latin
+"Termizga 2 ta joy bormi bugunga",PASSENGER_REQUEST,latin
+"Kattaqo'rg'ondan Toshkentga borishim kerak",PASSENGER_REQUEST,latin
+"Zarafshondan Navoiyga taksi bormi hozir",PASSENGER_REQUEST,latin
+"Shahrisabzga 1 kishi ketaman mashina bormi",PASSENGER_REQUEST,latin
+"Assalomu alaykum Toshkentga 2 kishi boramiz",PASSENGER_REQUEST,latin
+"Shovotdan Urganchga 1 ta joy kerak",PASSENGER_REQUEST,latin
+"Qo'qondan Toshkentga ketadigan taksi kerak",PASSENGER_REQUEST,latin
+"Hozir Toshkentga ketadigan mashina bormi",PASSENGER_REQUEST,latin
+"Ertaga soat 8 ga Samarqandga 2 ta joy kerak",PASSENGER_REQUEST,latin
+"Chustdan Toshkentga ketishga mashina bormi",PASSENGER_REQUEST,latin
+"Asakadan Andijon shahriga taksi kerak",PASSENGER_REQUEST,latin
+"Buxoroga 1 kishilik joy bormi",PASSENGER_REQUEST,latin
+"Xo'jaylidan Nukusga ketaman",PASSENGER_REQUEST,latin
+"Markazga taksi kerak zudlik bilan",PASSENGER_REQUEST,latin
+"Aeroportga 3 kishi ketamiz yukimiz bor",PASSENGER_REQUEST,latin
+"toshkenga moshina kerek 2 ta joy",PASSENGER_REQUEST,latin
+"tshkntdan samarqandga joy bormi",PASSENGER_REQUEST,latin
+"samarqanga ketish kere 1 kishi",PASSENGER_REQUEST,latin
+"andijonga taxi bormi bratla",PASSENGER_REQUEST,latin
+"buxoroga mashina kere zudlik bn",PASSENGER_REQUEST,latin
+"namanganga 2 kishiga mest kerak",PASSENGER_REQUEST,latin
+"fargonaga 1 ta mesto bormi",PASSENGER_REQUEST,latin
+"tashkentga ketaman 2 kishi",PASSENGER_REQUEST,latin
+"chirchikdan toshkentga mashina bormi",PASSENGER_REQUEST,latin
+"1 kishi samarqan ketishim kere",PASSENGER_REQUEST,latin
+"Тошкентдан Самарқандга 2 та жой керак",PASSENGER_REQUEST,cyrillic
+"Чирчиқдан Тошкентга кетишим керак",PASSENGER_REQUEST,cyrillic
+"Самарқандга борадиган машина борми?",PASSENGER_REQUEST,cyrillic
+"2 кишимиз, Бухорога кетишимиз керак",PASSENGER_REQUEST,cyrillic
+"Ассалому алайкум, Наманганга машина керак",PASSENGER_REQUEST,cyrillic
+"Фарғонага такси борми 1 та жой",PASSENGER_REQUEST,cyrillic
+"Андижонга кетадиган машина борми",PASSENGER_REQUEST,cyrillic
+"Қаршига 3 киши борамиз машина керак",PASSENGER_REQUEST,cyrillic
+"Навоийга кетадиганлар борми 2 та жой",PASSENGER_REQUEST,cyrillic
+"Жиззахга битта одам бор",PASSENGER_REQUEST,cyrillic
+"Гулистонга шошилинч такси керак",PASSENGER_REQUEST,cyrillic
+"Термизга машина борми ҳозир юрадиган",PASSENGER_REQUEST,cyrillic
+"Урганчдан Хивага 2 киши кетамиз",PASSENGER_REQUEST,cyrillic
+"Бухорога такси керак нархи неча пул",PASSENGER_REQUEST,cyrillic
+"Олмалиқдан Тошкентга машина бормикан",PASSENGER_REQUEST,cyrillic
+"Бекободга 1 та жой керак",PASSENGER_REQUEST,cyrillic
+"Қўқонга борадиган такси борми",PASSENGER_REQUEST,cyrillic
+"Аэропортдан марказгача такси керак",PASSENGER_REQUEST,cyrillic
+"Шаҳрисабзга 2 та жой керак эрталабга",PASSENGER_REQUEST,cyrillic
+"Вокзалга машина керак шошилинч",PASSENGER_REQUEST,cyrillic
+"Тошкентдан Samarqandga 2 ta joy kerak",PASSENGER_REQUEST,mixed
+"Toshkentdan Самарқандга кетамиз",PASSENGER_REQUEST,mixed
+"Chirchiqdan Тошкентга 1 kishi boraman",PASSENGER_REQUEST,mixed
+"Андижонга taksi kerak 2 kishi",PASSENGER_REQUEST,mixed
+"Buxoroga машина керак bugunga",PASSENGER_REQUEST,mixed
+"Самарқандга 3 ta joy bormi",PASSENGER_REQUEST,mixed
+"Navoiyga машина борми 1 kishiga",PASSENGER_REQUEST,mixed
+"Toshkent aeroportidan марказга такси kerak",PASSENGER_REQUEST,mixed
+"Toshkentdan Samarqandga 3 ta joy bor",DRIVER_OFFER,latin
+"Buxoroga yo'lovchi olaman",DRIVER_OFFER,latin
+"Toshkent aeroportidan yo'lovchi olib ketaman",DRIVER_OFFER,latin
+"Cobalt mashina bor Andijonga yuramiz",DRIVER_OFFER,latin
+"Farg'onaga 2 ta bo'sh joy bor salon toza",DRIVER_OFFER,latin
+"Namanganga hozir yuramiz 3 ta joy bor",DRIVER_OFFER,latin
+"Samarqandga odam olib boraman",DRIVER_OFFER,latin
+"Qarshiga yuk va yo'lovchi olamiz",DRIVER_OFFER,latin
+"Gentra mashinam bor Toshkent Samarqand qatnayman",DRIVER_OFFER,latin
+"Navoiy Buxoro yo'nalishida 4 ta joy bor",DRIVER_OFFER,latin
+"Chirchiqdan Toshkentga odam olaman",DRIVER_OFFER,latin
+"Gulistonga 1 ta joy bor tezda yuramiz",DRIVER_OFFER,latin
+"Jizzaxga mashina bor pochta va odam olamiz",DRIVER_OFFER,latin
+"Termizga Nexia 3 bor 3 ta odam olaman",DRIVER_OFFER,latin
+"Urganch Xiva qatnayman bo'sh mashina bor",DRIVER_OFFER,latin
+"Toshkentdan Farg'ona vodiysiga yo'lovchi olamiz",DRIVER_OFFER,latin
+"Samarqanddan Toshkentga 2 ta joy bor ketadiganlar bormi",DRIVER_OFFER,latin
+"Odam olaman Samarqand Toshkent yo'nalishi",DRIVER_OFFER,latin
+"Yuk olaman dastavka bor hamma viloyatlarga",DRIVER_OFFER,latin
+"Pochta va odam olamiz Toshkent vodiy",DRIVER_OFFER,latin
+"Mashina bor Toshkentga 4 ta joy bo'sh",DRIVER_OFFER,latin
+"Buxoroga yuradigan mashinam bor odam olaman",DRIVER_OFFER,latin
+"Qo'qondan Toshkentga 3 ta joy qoldi yuramiz",DRIVER_OFFER,latin
+"Andijon Toshkent har kuni qatnayman odam olaman",DRIVER_OFFER,latin
+"Shovotdan Toshkentga 2 ta joy bor moshina tayyor",DRIVER_OFFER,latin
+"Andijonga mashina bor yuk olaman",DRIVER_OFFER,latin
+"Toshkent Samarqand pochta olamiz mashina bor",DRIVER_OFFER,latin
+"Termizga 4 kishilik bo'sh mashina bor",DRIVER_OFFER,latin
+"Farg'onaga 1 kishi olaman salon toza",DRIVER_OFFER,latin
+"Samarqandga hozir chiqib ketamiz 2 ta joy bor",DRIVER_OFFER,latin
+"Buxoroga yuk tashish xizmati dastavka bor",DRIVER_OFFER,latin
+"Qarshi Toshkent yo'lovchi olib boramiz",DRIVER_OFFER,latin
+"Toshkentdan Xorazmga yuramiz bo'sh joy bor",DRIVER_OFFER,latin
+"Navoiyga 2 ta joy bor yuramiz hozir",DRIVER_OFFER,latin
+"Namanganga pochta dastavka olamiz",DRIVER_OFFER,latin
+"Тошкентдан Самарқандга 3 та жой бор",DRIVER_OFFER,cyrillic
+"Бухорога йўловчи оламан",DRIVER_OFFER,cyrillic
+"Андижонга машина бор, 2 ta joy mavjud",DRIVER_OFFER,mixed
+"Фарғонага одам оламиз 3 та жой бор",DRIVER_OFFER,cyrillic
+"Наманганга ҳозир юрамиз машина тайёр",DRIVER_OFFER,cyrillic
+"Қаршига почта ва одам оламан",DRIVER_OFFER,cyrillic
+"Самарқандга бўш жой бор 2 киши",DRIVER_OFFER,cyrillic
+"Тошкент аэропортидан одам олиб кетаман",DRIVER_OFFER,cyrillic
+"Навоийга борадиган машина бор 4 та жой",DRIVER_OFFER,cyrillic
+"Жиззахга йўловчи оламиз юрамиз",DRIVER_OFFER,cyrillic
+"Гулистонга 2 та одам оламан",DRIVER_OFFER,cyrillic
+"Термизга машина бор салонда 3 та жой",DRIVER_OFFER,cyrillic
+"Урганч Хива йўналишида одам оламиз",DRIVER_OFFER,cyrillic
+"Почта оламан ҳамма вилоятларга даставка бор",DRIVER_OFFER,cyrillic
+"Юк оламиз водийга Тошкентдан",DRIVER_OFFER,cyrillic
+"Қўқонга 2 та жой бор ҳозир кетамиз",DRIVER_OFFER,cyrillic
+"Шаҳрисабзга одам олиб бораман",DRIVER_OFFER,cyrillic
+"Андижонга юрамиз салон бўш",DRIVER_OFFER,cyrillic
+"Тошкентга бўш машина бор 4 та жой",DRIVER_OFFER,cyrillic
+"Одам оламиз Бухоро Тошкент",DRIVER_OFFER,cyrillic
+"Тошкентдан Samarqandga 3 ta joy bor yuramiz",DRIVER_OFFER,mixed
+"Andijonga машина бор 2 kishi olaman",DRIVER_OFFER,mixed
+"Buxoroga odam olaman салон тоза",DRIVER_OFFER,mixed
+"Samarqandga 2 ta mest bor ketamiz",DRIVER_OFFER,mixed
+"Toshkentga 3 ta joy bor mest bor",DRIVER_OFFER,mixed
+"Fargonaga odam olamiz dostavka bor",DRIVER_OFFER,mixed
+"Bugun Toshkentda havo yaxshi",OTHER,latin
+"Samarqandga o'tgan hafta bordim",OTHER,latin
+"Assalomu alaykum hammaga",OTHER,latin
+"Kimda telefon zaryadkasi bor?",OTHER,latin
+"Toshkent–Samarqand yo'lida ta'mirlash ishlari ketmoqda",OTHER,latin
+"Salom kim sotadi telefon iPhone 13?",OTHER,latin
+"Samarqandda qaysi mehmonxona yaxshi?",OTHER,latin
+"Buxoroda benzin narxi qancha bo'ldi?",OTHER,latin
+"Assalomu alaykum aka guruhga qanday odam qo'shsa bo'ladi",OTHER,latin
+"Bugun Namanganda yomg'ir yog'yapti",OTHER,latin
+"Toshkentda arenda kvartira bormi 2 xonali",OTHER,latin
+"Karta raqam tashlab bering to'lov qilaman",OTHER,latin
+"Rahmat hammaga sog' bo'linglar",OTHER,latin
+"Kechagi o'yinda hisob necha bo'ldi?",OTHER,latin
+"Guruh admini kim ekan bog'lanish kerak",OTHER,latin
+"Navoiyda yaxshi tushlik qiladigan joy qayerda bor?",OTHER,latin
+"Ertaga banklar ishlaydimi bayram kuni",OTHER,latin
+"Moshina sotiladi Gentra 2022 probeg 45000",OTHER,latin
+"Gaz zapravkada navbat bormi Toshkentda",OTHER,latin
+"Salom qayerdansizlar hammaga xayrli kech",OTHER,latin
+"Samarqandda yaxshi choyxona bormi osh yeydigan",OTHER,latin
+"Toshkentda propiska masalasida kim yordam beradi",OTHER,latin
+"Toshkent shahar hokimiyati yangi qaror chiqardi",OTHER,latin
+"Ertaga havo harorati qanday bo'ladi",OTHER,latin
+"Telegramda yangi funksiya chiqibdi",OTHER,latin
+"Assalomu alaykum juma ayyomi muborak bo'lsin",OTHER,latin
+"Plastik kartamni yo'qotib qo'ydim nima qilsam bo'ladi",OTHER,latin
+"Andijonda dollarning kursi qancha bo'lyapti",OTHER,latin
+"Toshkent Samarqand tezyurar poyezdiga bilet qolmabdi",OTHER,latin
+"Mashinaning moyini qayerda almashtirsa yaxshi",OTHER,latin
+"Бугун Тошкентда ҳаво жуда яхши бўлди",OTHER,cyrillic
+"Самарқандга ўтган ҳафта боргандим",OTHER,cyrillic
+"Ассалому алайкум ҳаммага хайрли тонг",OTHER,cyrillic
+"Кимда машина аккумулятори бор экан",OTHER,cyrillic
+"Тошкент Самарқанд йўлида радарлар кўпайибди",OTHER,cyrillic
+"Бензин нархи яна кўтарилибдику",OTHER,cyrillic
+"Телефон рақамингизни ёзиб юборинг",OTHER,cyrillic
+"Раҳмат админ яхши иш бўлибди",OTHER,cyrillic
+"Бугун байрам муносабати билан йўллар ёпиқ",OTHER,cyrillic
+"Автомобил сотилади Cobalt 2023 йил",OTHER,cyrillic
+"Хоразмда ҳаво совуқми ҳозир",OTHER,cyrillic
+"Қаршида қайси устахона яхши",OTHER,cyrillic
+"Бухоро тўғрисида ҳужжатли филм кўрдим",OTHER,cyrillic
+"Наманганда бозор қайси кунлари бўлади",OTHER,cyrillic
+"Салом дўстлар ишларингизга омад",OTHER,cyrillic
+"Тошкентда ҳаво ҳарорати 25 даража",OTHER,cyrillic
+"Группага одам қўшиш текинми",OTHER,cyrillic
+"Кимда Навоий шаҳар харитаси бор",OTHER,cyrillic
+"Фарғонада янги истироҳат боғи очилибди",OTHER,cyrillic
+"Барчага хайрли тун яхши дам олинглар",OTHER,cyrillic
+"Bugun Тошкентда havo zo'r bo'ldi",OTHER,mixed
+"Samarqandda қайси кафе yaxshi",OTHER,mixed
+"Assalomu alaykum ҳаммага hayrli kech",OTHER,mixed
+"Buxoroda бензин bormi zapravkada",OTHER,mixed
+"qo'qondan toshkentga odam bor",PASSENGER_REQUEST,latin
+"qoqondan toshkentga odam bor",PASSENGER_REQUEST,latin
+"toshkentga odam bor",PASSENGER_REQUEST,latin
+"buvaydadan 2 ta odam bor toshkentga",PASSENGER_REQUEST,latin
+"samarqandga 1 ta odam bor mashina kerak",PASSENGER_REQUEST,latin
+"buxoroga 3 ta odam bor",PASSENGER_REQUEST,latin
+"andijonga 2 kishi bor ketadigan",PASSENGER_REQUEST,latin
+"namanganga odam bor olib ketadigan bormi",PASSENGER_REQUEST,latin
+"farg'onaga 2 ta odam bor toshkentdan",PASSENGER_REQUEST,latin
+"vodiyga 2 kishi bor toshkentdan",PASSENGER_REQUEST,latin
+"qarshiga odam bor bugun kechga",PASSENGER_REQUEST,latin
+"termizga 3 kishi bor mashina bormi",PASSENGER_REQUEST,latin
+"navoiyga 2 ta odam bor hozirga",PASSENGER_REQUEST,latin
+"gulistonga odam bor",PASSENGER_REQUEST,latin
+"Тошкентга одам бор",PASSENGER_REQUEST,cyrillic
+"Қўқондан Тошкентга 2 та одам бор",PASSENGER_REQUEST,cyrillic
+"Самарқандга 3 та одам бор машина борми",PASSENGER_REQUEST,cyrillic
+"Андижонга одам бор олиб кетадиган",PASSENGER_REQUEST,cyrillic
+"Бухорога 1 киши бор",PASSENGER_REQUEST,cyrillic
+"Фарғонага 2 та одам бор Тошкентдан",PASSENGER_REQUEST,cyrillic
+"Бувайдадан 2 та одам бор Тошкентга",PASSENGER_REQUEST,cyrillic
+"Toshkentga 2 ta одам бор",PASSENGER_REQUEST,mixed
+"Qoqondan Toshkentga odam bor ketadigan",PASSENGER_REQUEST,latin
+"Odam bor Samarqandga 3 kishi",PASSENGER_REQUEST,latin

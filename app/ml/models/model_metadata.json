@@ -1,0 +1,90 @@
+{
+  "model_version": "1.0.0",
+  "created_at": "2026-10-27T14:07:40.230527+00:00",
+  "model_type": "FeatureUnion(Word+Char n-grams) + Calibrated LinearSVC",
+  "classes": [
+    "DRIVER_OFFER",
+    "OTHER",
+    "PASSENGER_REQUEST"
+  ],
+  "dataset_samples": 199,
+  "test_metrics": {
+    "model_name": "Semantic Multi-Gram Calibrated Model",
+    "macro_f1": 0.9689,
+    "weighted_f1": 0.9693,
+    "labels": [
+      "DRIVER_OFFER",
+      "OTHER",
+      "PASSENGER_REQUEST"
+    ],
+    "confusion_matrix": [
+      [
+        10,
+        0,
+        0
+      ],
+      [
+        0,
+        8,
+        1
+      ],
+      [
+        0,
+        0,
+        14
+      ]
+    ],
+    "classification_report": {
+      "DRIVER_OFFER": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 10.0
+      },
+      "OTHER": {
+        "precision": 1.0,
+        "recall": 0.8888888888888888,
+        "f1-score": 0.9411764705882353,
+        "support": 9.0
+      },
+      "PASSENGER_REQUEST": {
+        "precision": 0.9333333333333333,
+        "recall": 1.0,
+        "f1-score": 0.9655172413793104,
+        "support": 14.0
+      },
+      "accuracy": 0.9696969696969697,
+      "macro avg": {
+        "precision": 0.9777777777777779,
+        "recall": 0.9629629629629629,
+        "f1-score": 0.9688979039891819,
+        "support": 33.0
+      },
+      "weighted avg": {
+        "precision": 0.9717171717171716,
+        "recall": 0.9696969696969697,
+        "f1-score": 0.9693281701395291,
+        "support": 33.0
+      }
+    },
+    "script_performance": {
+      "latin": {
+        "correct": 19,
+        "total": 20
+      },
+      "cyrillic": {
+        "correct": 10,
+        "total": 10
+      },
+      "mixed": {
+        "correct": 3,
+        "total": 3
+      }
+    }
+  },
+  "baseline_comparison": {
+    "baseline_macro_f1": 0.8089,
+    "semantic_macro_f1": 0.9689
+  },
+  "operating_confidence_threshold": 0.65
+}

@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taxi_forwarder_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Automatically connect to the containerized PostgreSQL service
+      - DATABASE_URL=postgresql+asyncpg://taxi_user:taxi_secure_password@postgres:5432/taxi_bot
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - taxi_net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: taxi_postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: taxi_bot
+      POSTGRES_USER: taxi_user
+      POSTGRES_PASSWORD: taxi_secure_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taxi_user -d taxi_bot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taxi_net
+    ports:
+      # Optional: Bind port locally for administration (DBeaver / DataGrip)
+      - "127.0.0.1:5432:5432"
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  taxi_net:
+    driver: bridge

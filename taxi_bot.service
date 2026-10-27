@@ -1,0 +1,19 @@
+[Unit]
+Description=Telegram Taxi Forwarder Bot
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/bot
+EnvironmentFile=/home/ubuntu/bot/.env
+ExecStart=/home/ubuntu/bot/.venv/bin/python -m app.main
+Restart=always
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
