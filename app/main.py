@@ -36,6 +36,9 @@ async def setup_bot_commands(bot: Bot) -> None:
         BotCommand(command="subscription", description="Haydovchini tekshirish"),
         BotCommand(command="active", description="Faol obunachilar"),
         BotCommand(command="expired", description="Muddati tugaganlar"),
+        BotCommand(command="groups", description="Kuzatilayotgan guruhlar"),
+        BotCommand(command="addgroup", description="Guruh qo'shish"),
+        BotCommand(command="delgroup", description="Guruhni o'chirish"),
         BotCommand(command="stats", description="Umumiy statistika"),
         BotCommand(command="id", description="ID raqamni aniqlash"),
         BotCommand(command="help", description="Qo'llanma va yordam"),
@@ -107,6 +110,8 @@ async def main() -> None:
 
     # 6. Initialize Forwarding Service and hydrate 24-hour user cooldowns from DB
     from app.handlers.public_group import get_forwarding_service
+    from app.services.group_manager import get_group_manager
+
     forwarder = get_forwarding_service(bot)
     try:
         loaded_cooldowns = await forwarder.load_recent_cooldowns_from_db()
@@ -115,7 +120,14 @@ async def main() -> None:
     except Exception as exc:
         logger.warning("Could not hydrate user cooldowns from DB: %s", exc)
 
-    # 7. Initialize Userbot (MTProto) if enabled
+    # 7. Initialize Dynamic Group Manager
+    group_manager = get_group_manager(settings)
+    try:
+        await group_manager.initialize()
+    except Exception as exc:
+        logger.warning("Could not initialize dynamic group manager: %s", exc)
+
+    # 8. Initialize Userbot (MTProto) if enabled
     userbot_client = None
     if settings.userbot_enabled:
         if not settings.tg_api_id or not settings.tg_api_hash:
@@ -137,6 +149,9 @@ async def main() -> None:
                             ub_me.username,
                             ub_me.id,
                         )
+                        # Attach userbot to group manager for real-time joins
+                        group_manager.set_clients(bot=bot, userbot=userbot_client)
+
                         # Auto-join configured target groups by link or username
                         monitored_ids = await auto_join_and_resolve_targets(userbot_client, settings)
 
@@ -157,6 +172,9 @@ async def main() -> None:
                         )
             except Exception as exc:
                 logger.error("Failed to initialize Telethon Userbot: %s", exc)
+
+    # Ensure bot client is attached to group_manager
+    group_manager.set_clients(bot=bot, userbot=userbot_client)
 
     logger.info("Bot is now listening for incoming messages (Polling mode)...")
 

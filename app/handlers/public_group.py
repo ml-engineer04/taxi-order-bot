@@ -107,8 +107,10 @@ async def handle_public_group_message(message: types.Message) -> None:
     chat_id = message.chat.id
     current_settings = get_settings()
 
-    # 5. Only monitor messages from configured PUBLIC_GROUP_ID(s)
-    if not current_settings.is_monitored_public_group(chat_id):
+    # 5. Only monitor messages from configured or dynamically added PUBLIC_GROUP_ID(s)
+    from app.services.group_manager import get_group_manager
+    group_mgr = get_group_manager(current_settings)
+    if not group_mgr.is_monitored(chat_id) and not current_settings.is_monitored_public_group(chat_id):
         logger.debug("Ignored message from unmonitored group ID: %s", chat_id)
         return
 

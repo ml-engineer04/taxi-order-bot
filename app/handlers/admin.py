@@ -54,6 +54,10 @@ async def handle_start(message: types.Message) -> None:
             "• /expired - Muddati o'tgan haydovchilar\n"
             "• /pending - To'lov kutilayotganlar\n"
             "• /stats - Umumiy statistika\n\n"
+            "<b>Guruhlar boshqaruvi:</b>\n"
+            "• /groups - Kuzatilayotgan guruhlar ro'yxati\n"
+            "• <code>/addgroup &lt;ID/link&gt;</code> - Yangi guruh qo'shish\n"
+            "• <code>/delgroup &lt;ID&gt;</code> - Guruhni o'chirish\n\n"
             "<b>Mashinali o'rganish (AI/ML):</b>\n"
             "• /review - Guruhdan to'plangan noaniq xabarlarni tasdiqlash\n"
             "• /retrain - Modelni yangi xabarlar bilan qayta o'qitish\n\n"
@@ -599,6 +603,169 @@ async def handle_retrain(message: types.Message) -> None:
 
     success, summary = await retrain_model_async()
     await status_msg.edit_text(summary, parse_mode="HTML")
+
+
+@admin_router.message(Command("groups", "guruhlar"))
+async def handle_list_groups(message: types.Message) -> None:
+    """Display list of all dynamically monitored public groups."""
+    user = message.from_user
+    if not user or not is_admin(user.id):
+        await message.answer("⛔ <i>Bu buyruq faqat administratorlar uchun mo'ljallangan.</i>", parse_mode="HTML")
+        return
+
+    from app.services.group_manager import get_group_manager
+    group_mgr = get_group_manager()
+    groups = await group_mgr.get_all_groups()
+
+    if not groups:
+        text = (
+            "📋 <b>KUZATILAYOTGAN GURUHLAR RO'YXATI:</b>\n\n"
+            "<i>Hozircha birorta ham guruh bazaga qo'shilmagan.</i>\n\n"
+            "➕ <b>Guruh qo'shish uchun:</b>\n"
+            "<code>/addgroup &lt;Chat ID yoki @username yoki havola&gt;</code>\n"
+            "<i>Masalan: <code>/addgroup -1003726192046</code></i>"
+        )
+        await message.answer(text, parse_mode="HTML")
+        return
+
+    lines = [
+        "📋 <b>KUZATILAYOTGAN GURUHLAR RO'YXATI:</b>",
+        "━━━━━━━━━━━━━━━━━━━━",
+    ]
+    builder = InlineKeyboardBuilder()
+
+    for idx, grp in enumerate(groups, start=1):
+        name = grp.title or f"Guruh ({grp.chat_id})"
+        lines.append(f"<b>{idx}. {name}</b>")
+        lines.append(f"   🆔 ID: <code>{grp.chat_id}</code>")
+        if grp.username:
+            lines.append(f"   🏷 Username: @{grp.username}")
+        lines.append("")
+
+        btn_label = f"🗑 O'chirish: {name[:16]}"
+        builder.button(text=btn_label, callback_data=f"del_grp:{grp.chat_id}")
+
+    lines.append("━━━━━━━━━━━━━━━━━━━━")
+    lines.append(f"📊 <i>Jami faol guruhlar: {len(groups)} ta</i>\n")
+    lines.append("➕ <b>Yangi guruh qo'shish:</b>\n<code>/addgroup &lt;ID yoki @username yoki havola&gt;</code>\n")
+    lines.append("❌ <b>Guruhni o'chirish:</b>\n<code>/delgroup &lt;ID&gt;</code>")
+
+    builder.adjust(1)
+    await message.answer("\n".join(lines), reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@admin_router.message(Command("addgroup", "qosh"))
+async def handle_add_group(message: types.Message) -> None:
+    """Dynamically add and join a new group: /addgroup <ID | @username | invite_link>"""
+    user = message.from_user
+    if not user or not is_admin(user.id):
+        await message.answer("⛔ <i>Bu buyruq faqat administratorlar uchun mo'ljallangan.</i>", parse_mode="HTML")
+        return
+
+    parts = (message.text or "").strip().split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        help_text = (
+            "ℹ️ <b>Guruh qo'shish bo'yicha ko'rsatma:</b>\n\n"
+            "Format: <code>/addgroup &lt;ID yoki @username yoki havola&gt;</code>\n\n"
+            "<b>Misollar:</b>\n"
+            "• ID raqam orqali:\n"
+            "  <code>/addgroup -1003726192046</code>\n"
+            "  <code>/addgroup -5353349446</code>\n\n"
+            "• Ommaviy username orqali:\n"
+            "  <code>/addgroup @toshkent_vodiy_taksi</code>\n\n"
+            "• Maxsus taklif havolasi orqali:\n"
+            "  <code>/addgroup https://t.me/+AbCdEf123...</code>"
+        )
+        await message.answer(help_text, parse_mode="HTML")
+        return
+
+    target = parts[1].strip()
+    status_msg = await message.answer("⏳ <i>Guruh tekshirilmoqda va ulanmoqda...</i>", parse_mode="HTML")
+
+    from app.services.group_manager import get_group_manager
+    group_mgr = get_group_manager()
+    success, reply_text, _ = await group_mgr.add_group(target=target, admin_id=user.id)
+
+    await status_msg.edit_text(reply_text, parse_mode="HTML")
+
+
+@admin_router.message(Command("delgroup", "removegroup", "ochir"))
+async def handle_remove_group(message: types.Message) -> None:
+    """Dynamically remove a monitored group: /delgroup <Chat ID>"""
+    user = message.from_user
+    if not user or not is_admin(user.id):
+        await message.answer("⛔ <i>Bu buyruq faqat administratorlar uchun mo'ljallangan.</i>", parse_mode="HTML")
+        return
+
+    parts = (message.text or "").strip().split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        help_text = (
+            "ℹ️ <b>Guruhni o'chirish bo'yicha ko'rsatma:</b>\n\n"
+            "Format: <code>/delgroup &lt;Chat ID&gt;</code>\n\n"
+            "<b>Misol:</b>\n"
+            "<code>/delgroup -5353349446</code>\n\n"
+            "<i>(Mavjud barcha guruhlar ro'yxatini ko'rish uchun /groups yuboring).</i>"
+        )
+        await message.answer(help_text, parse_mode="HTML")
+        return
+
+    target_id = parts[1].strip()
+    from app.services.group_manager import get_group_manager
+    group_mgr = get_group_manager()
+    success, reply_text = await group_mgr.remove_group(target_id)
+
+    await message.answer(reply_text, parse_mode="HTML")
+
+
+@admin_router.callback_query(F.data.startswith("del_grp:"))
+async def handle_delete_group_callback(callback: types.CallbackQuery) -> None:
+    """Handle interactive inline group deletion."""
+    user = callback.from_user
+    if not user or not is_admin(user.id):
+        await callback.answer("⛔ Ruxsat berilmagan!", show_alert=True)
+        return
+
+    chat_id_str = callback.data.split(":", 1)[1]
+    from app.services.group_manager import get_group_manager
+    group_mgr = get_group_manager()
+
+    success, reply_text = await group_mgr.remove_group(chat_id_str)
+    await callback.answer("Guruh kuzatuvdan olib tashlandi!", show_alert=True)
+
+    # Refresh the list view
+    groups = await group_mgr.get_all_groups()
+    if not groups:
+        if callback.message:
+            await callback.message.edit_text(
+                "📋 <b>KUZATILAYOTGAN GURUHLAR RO'YXATI:</b>\n\n"
+                "<i>Hozircha birorta ham guruh kuzatilmayapti.</i>\n\n"
+                "➕ <b>Guruh qo'shish uchun:</b>\n<code>/addgroup &lt;ID yoki link&gt;</code>",
+                parse_mode="HTML",
+            )
+        return
+
+    lines = [
+        "📋 <b>KUZATILAYOTGAN GURUHLAR RO'YXATI:</b>",
+        "━━━━━━━━━━━━━━━━━━━━",
+    ]
+    builder = InlineKeyboardBuilder()
+    for idx, grp in enumerate(groups, start=1):
+        name = grp.title or f"Guruh ({grp.chat_id})"
+        lines.append(f"<b>{idx}. {name}</b>")
+        lines.append(f"   🆔 ID: <code>{grp.chat_id}</code>")
+        if grp.username:
+            lines.append(f"   🏷 Username: @{grp.username}")
+        lines.append("")
+        builder.button(text=f"🗑 O'chirish: {name[:16]}", callback_data=f"del_grp:{grp.chat_id}")
+
+    lines.append("━━━━━━━━━━━━━━━━━━━━")
+    lines.append(f"📊 <i>Jami faol guruhlar: {len(groups)} ta</i>\n")
+    lines.append("➕ <b>Yangi guruh qo'shish:</b>\n<code>/addgroup &lt;ID yoki link&gt;</code>\n")
+    lines.append("❌ <b>Guruhni o'chirish:</b>\n<code>/delgroup &lt;ID&gt;</code>")
+
+    builder.adjust(1)
+    if callback.message:
+        await callback.message.edit_text("\n".join(lines), reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
 @admin_router.message(F.chat.type == ChatType.PRIVATE, ~F.text.startswith("/"))

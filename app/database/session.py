@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
 from app.config import get_settings
 from app.database.base import Base
 # Ensure all models are imported so Base.metadata knows about them
-from app.database.models import Driver, ForwardedMessageRecord, CollectedMessageRecord  # noqa: F401
+from app.database.models import Driver, ForwardedMessageRecord, CollectedMessageRecord, MonitoredGroupRecord  # noqa: F401
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
