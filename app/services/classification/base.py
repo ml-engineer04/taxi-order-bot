@@ -30,6 +30,10 @@ class ClassificationResult(BaseModel):
         default=None,
         description="Detected number of passengers or requested seats",
     )
+    time: Optional[str] = Field(
+        default=None,
+        description="Detected departure time if mentioned (e.g. 'Hozir', 'Kechga', 'Soat 5da')",
+    )
     reason: str = Field(
         default="",
         description="Diagnostic explanation of why the message was or was not classified as a passenger request",

@@ -44,8 +44,13 @@ class ClaudeClassifier(BaseClassifier):
             "1. PASSENGER: A person seeking a ride/taxi (e.g., 'Toshkentga odam bor', 'Samarqandga 2 ta joy kerak', 'Chirchiqqa mashina bormi', '2 kishimiz').\n"
             "2. DRIVER: A driver offering a ride, seats, or delivery (e.g., 'odam olaman', '3 ta joy bor yuramiz', 'salon bosh', 'pochta olamiz').\n"
             "3. OTHER: Greetings, weather, news, car sales, non-transport chatter.\n"
+            "Extract metadata:\n"
+            "- origin: departure city/region (e.g. 'Qo‘qon', 'Toshkent')\n"
+            "- destination: arrival city/region (e.g. 'Toshkent', 'Samarqand')\n"
+            "- seats: number of passengers/seats requested as integer\n"
+            "- time: departure time if mentioned in message (e.g. 'Hozir', 'Kechga', 'Soat 5da', 'Ertalab') or null if not mentioned\n"
             "Respond ONLY with a JSON object in this exact structure:\n"
-            "{\"is_passenger\": bool, \"confidence\": float, \"origin\": str|null, \"destination\": str|null, \"seats\": int|null, \"reason\": str}"
+            "{\"is_passenger\": bool, \"confidence\": float, \"origin\": str|null, \"destination\": str|null, \"seats\": int|null, \"time\": str|null, \"reason\": str}"
         )
 
         try:
@@ -85,6 +90,7 @@ class ClaudeClassifier(BaseClassifier):
                         origin_val = parsed.get("origin")
                         dest_val = parsed.get("destination")
                         seats_val = parsed.get("seats")
+                        time_val = parsed.get("time")
                         if seats_val is not None:
                             try:
                                 seats_val = int(seats_val)
@@ -97,6 +103,7 @@ class ClaudeClassifier(BaseClassifier):
                             origin=origin_val.capitalize() if origin_val else None,
                             destination=dest_val.capitalize() if dest_val else None,
                             seats=seats_val,
+                            time=str(time_val).strip() if time_val else None,
                             reason=parsed.get("reason", "Claude decision"),
                             method="claude",
                         )

@@ -108,17 +108,11 @@ async def main() -> None:
         except Exception as exc:
             logger.info("Could not send startup PM to admin %s: %s", admin_id, exc)
 
-    # 6. Initialize Forwarding Service and hydrate 24-hour user cooldowns from DB
+    # 6. Initialize Forwarding Service and Dynamic Group Manager
     from app.handlers.public_group import get_forwarding_service
     from app.services.group_manager import get_group_manager
 
     forwarder = get_forwarding_service(bot)
-    try:
-        loaded_cooldowns = await forwarder.load_recent_cooldowns_from_db()
-        if loaded_cooldowns > 0:
-            logger.info("Restored %d active 24h user cooldown(s) from database.", loaded_cooldowns)
-    except Exception as exc:
-        logger.warning("Could not hydrate user cooldowns from DB: %s", exc)
 
     # 7. Initialize Dynamic Group Manager
     group_manager = get_group_manager(settings)

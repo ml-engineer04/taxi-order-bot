@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 class DeduplicationCache:
-    """In-memory sliding-window cache to prevent duplicate forwarding."""
+    """In-memory sliding-window cache to prevent immediate duplicate forwarding (3 min TTL)."""
 
-    def __init__(self, ttl_seconds: int = 86400):
+    def __init__(self, ttl_seconds: int = 180):
         self.ttl = ttl_seconds
         # Mapping: hash -> timestamp
         self._cache: Dict[str, float] = {}
@@ -32,7 +32,7 @@ class DeduplicationCache:
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def is_duplicate(self, user_id: int, text: str) -> bool:
-        """Check if message from this user was already forwarded recently."""
+        """Check if identical message from this user was already forwarded recently."""
         self._cleanup()
         key = self._generate_key(user_id, text)
         return key in self._cache
@@ -50,45 +50,6 @@ class DeduplicationCache:
             del self._cache[k]
 
 
-class UserCooldownRegistry:
-    """Tracks passenger users to enforce 1-day (24h) skip window."""
-
-    def __init__(self, cooldown_seconds: int = 86400):
-        self.cooldown_seconds = cooldown_seconds
-        # Mapping: user_id -> timestamp
-        self._cooldowns: Dict[int, float] = {}
-
-    def is_on_cooldown(self, user_id: int) -> bool:
-        if not user_id:
-            return False
-        self._cleanup()
-        return user_id in self._cooldowns
-
-    def get_remaining_hours(self, user_id: int) -> float:
-        ts = self._cooldowns.get(user_id)
-        if not ts:
-            return 0.0
-        remaining = self.cooldown_seconds - (time.time() - ts)
-        return max(0.0, remaining / 3600.0)
-
-    def record(self, user_id: int, timestamp: Optional[float] = None) -> None:
-        if not user_id:
-            return
-        self._cooldowns[user_id] = timestamp or time.time()
-
-    def populate(self, mapping: Dict[int, float]) -> None:
-        now = time.time()
-        for uid, ts in mapping.items():
-            if now - ts < self.cooldown_seconds:
-                self._cooldowns[uid] = ts
-
-    def _cleanup(self) -> None:
-        now = time.time()
-        expired = [uid for uid, ts in self._cooldowns.items() if now - ts >= self.cooldown_seconds]
-        for uid in expired:
-            del self._cooldowns[uid]
-
-
 class ForwardingService:
     """Handles dispatching passenger requests to the VIP drivers' group."""
 
@@ -97,43 +58,17 @@ class ForwardingService:
         bot: Bot,
         settings: Settings,
         deduplicator: Optional[DeduplicationCache] = None,
-        user_cooldowns: Optional[UserCooldownRegistry] = None,
     ):
         self.bot = bot
         self.settings = settings
-        cooldown_sec = getattr(settings, "user_cooldown_hours", 24) * 3600
-        self.deduplicator = deduplicator or DeduplicationCache(ttl_seconds=cooldown_sec)
-        self.user_cooldowns = user_cooldowns or UserCooldownRegistry(cooldown_seconds=cooldown_sec)
-
-    async def load_recent_cooldowns_from_db(self) -> int:
-        """Hydrate in-memory user cooldowns from database records within the last 24h."""
-        try:
-            from app.database.session import get_db_session
-            from app.repositories.forwarded_repo import ForwardedMessageRepository
-
-            async with get_db_session() as session:
-                cooldowns = await ForwardedMessageRepository.get_recent_user_cooldowns(
-                    session=session,
-                    hours=self.settings.user_cooldown_hours,
-                )
-                self.user_cooldowns.populate(cooldowns)
-                logger.info(
-                    "Loaded %d active user cooldown(s) (last %dh) from database.",
-                    len(cooldowns),
-                    self.settings.user_cooldown_hours,
-                )
-                return len(cooldowns)
-        except Exception as exc:
-            logger.warning("Could not load user cooldowns from DB: %s", exc)
-            return 0
+        self.deduplicator = deduplicator or DeduplicationCache(ttl_seconds=180)
 
     def is_user_on_cooldown(self, user_id: int) -> bool:
-        """Check if user has already forwarded a ride request within the 24-hour window."""
-        return self.user_cooldowns.is_on_cooldown(user_id)
+        """User 24h cooldown removed per business logic request."""
+        return False
 
     def get_user_remaining_cooldown_hours(self, user_id: int) -> float:
-        """Get remaining cooldown hours for user."""
-        return self.user_cooldowns.get_remaining_hours(user_id)
+        return 0.0
 
     def construct_message_link(
         self,
@@ -167,42 +102,51 @@ class ForwardingService:
         origin: Optional[str],
         destination: Optional[str],
         seats: Optional[int],
-        confidence: float,
         raw_text: str,
-        passenger_name: str,
         passenger_username: Optional[str],
         chat_id: int,
         message_id: int,
+        time_val: Optional[str] = None,
         chat_username: Optional[str] = None,
+        **kwargs,
     ) -> Tuple[str, types.InlineKeyboardMarkup]:
-        """Construct an informative HTML card and action buttons."""
+        """Construct an informative HTML card matching the user's requested clean design."""
         escaped_text = html.escape(raw_text)
-        origin_val = origin or "Aniqlanmadi"
-        dest_val = destination or "Aniqlanmadi"
-        seats_str = f"{seats} ta joy" if seats else "Ko'rsatilmagan"
-        escaped_name = html.escape(passenger_name) if passenger_name else "Yo'lovchi"
+
+        # Route formatting: Qo‘qon → Toshkent
+        if origin and destination:
+            route_str = f"{origin} → {destination}"
+        elif destination:
+            route_str = f"Noma'lum → {destination}"
+        elif origin:
+            route_str = f"{origin} → Noma'lum"
+        else:
+            route_str = "aniqlanmagan"
+
+        seats_str = f"{seats} kishi" if seats else "aniqlanmagan"
+        time_str = time_val or "aniqlanmagan"
 
         card_lines = [
-            "🚖 <b>YANGI YO'LOVCHI BUYURTMASI!</b>",
-            "━━━━━━━━━━━━━━━━━━━━",
-            f"📍 <b>Yo'nalish:</b> {origin_val} ➡️ <b>{dest_val}</b>",
-            f"👥 <b>O'rinlar:</b> {seats_str}",
-            f"👤 <b>Yo'lovchi:</b> {escaped_name}",
+            "🚕 <b>YANGI YO‘LOVCHI</b>",
+            f"📍 <b>{route_str}</b>",
+            f"👥 <b>Yo‘lovchilar:</b> {seats_str}",
+            f"🕒 <b>Vaqt:</b> {time_str}",
             "",
             "💬 <b>Asl xabar:</b>",
             f"<blockquote>{escaped_text}</blockquote>",
-            "━━━━━━━━━━━━━━━━━━━━",
-            f"<i>Ishonch darajasi: {int(confidence * 100)}%</i>",
         ]
         text = "\n".join(card_lines)
 
         builder = InlineKeyboardBuilder()
-        msg_link = self.construct_message_link(chat_id, message_id, chat_username)
-        builder.button(text="🔗 Xabarni guruhda ochish", url=msg_link)
 
+        # Primary button: Yo'lovchiga yozish
         if passenger_username:
             clean_username = passenger_username.lstrip("@")
             builder.button(text="💬 Yo'lovchiga yozish", url=f"https://t.me/{clean_username}")
+
+        # Secondary button: Xabarni guruhda ochish
+        msg_link = self.construct_message_link(chat_id, message_id, chat_username)
+        builder.button(text="🔗 Xabarni guruhda ochish", url=msg_link)
 
         builder.adjust(1)
         return text, builder.as_markup()
@@ -219,9 +163,8 @@ class ForwardingService:
             origin=classification.origin,
             destination=classification.destination,
             seats=classification.seats,
-            confidence=classification.confidence,
+            time_val=getattr(classification, "time", None),
             raw_text=raw_text,
-            passenger_name=user.full_name if user else "Yo'lovchi",
             passenger_username=user.username if user else None,
             chat_id=message.chat.id,
             message_id=message.message_id,
@@ -245,17 +188,7 @@ class ForwardingService:
         user_id = user.id if user else 0
         raw_text = message.text or message.caption or ""
 
-        # 1. Check 24-hour user cooldown (1 day window)
-        if self.is_user_on_cooldown(user_id):
-            remaining = self.get_user_remaining_cooldown_hours(user_id)
-            logger.info(
-                "⏭️ [24H COOLDOWN] User %s already forwarded within 1 day (%.1fh remaining). Skipping.",
-                user_id,
-                remaining,
-            )
-            return False
-
-        # 2. Check deduplication
+        # Check short deduplication (avoid exact duplicate sends within 3 mins)
         if self.deduplicator.is_duplicate(user_id, raw_text):
             logger.info("Skipping duplicate passenger request from user %s", user_id)
             return False
@@ -283,8 +216,7 @@ class ForwardingService:
                         disable_web_page_preview=True,
                     )
 
-                # Record in user cooldown & deduplication cache
-                self.user_cooldowns.record(user_id)
+                # Record in deduplication cache
                 self.deduplicator.record(user_id, raw_text)
 
                 # Save record to audit database
@@ -344,17 +276,6 @@ class ForwardingService:
             logger.warning("PRIVATE_GROUP_ID is not configured (0). Message not forwarded.")
             return False
 
-        # 1. Check 24-hour user cooldown (1 day window)
-        if self.is_user_on_cooldown(user_id):
-            remaining = self.get_user_remaining_cooldown_hours(user_id)
-            logger.info(
-                "⏭️ [24H COOLDOWN] User %s already forwarded within 1 day (%.1fh remaining). Skipping.",
-                user_id,
-                remaining,
-            )
-            return False
-
-        # 2. Check deduplication
         if self.deduplicator.is_duplicate(user_id, raw_text):
             logger.info("Skipping duplicate passenger request from user %s", user_id)
             return False
@@ -367,9 +288,8 @@ class ForwardingService:
                     origin=classification.origin,
                     destination=classification.destination,
                     seats=classification.seats,
-                    confidence=classification.confidence,
+                    time_val=getattr(classification, "time", None),
                     raw_text=raw_text,
-                    passenger_name=passenger_name,
                     passenger_username=passenger_username,
                     chat_id=chat_id,
                     message_id=message_id,
@@ -382,8 +302,6 @@ class ForwardingService:
                     parse_mode="HTML",
                     disable_web_page_preview=True,
                 )
-                # Record in user cooldown & deduplication cache
-                self.user_cooldowns.record(user_id)
                 self.deduplicator.record(user_id, raw_text)
 
                 # Save record to audit database

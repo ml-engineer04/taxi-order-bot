@@ -86,12 +86,12 @@ async def test_forward_custom_passenger_request():
     assert mock_bot.send_message.call_count == 1
     call_kwargs = mock_bot.send_message.call_args[1]
     assert call_kwargs["chat_id"] == -1004465107293
-    assert "Toshkent" in call_kwargs["text"]
-    assert "Buxoro" in call_kwargs["text"]
-    assert "3 ta joy" in call_kwargs["text"]
-    assert "Sardor Aliyev" in call_kwargs["text"]
+    assert "YANGI YO‘LOVCHI" in call_kwargs["text"]
+    assert "Toshkent → Buxoro" in call_kwargs["text"]
+    assert "3 kishi" in call_kwargs["text"]
+    assert "aniqlanmagan" in call_kwargs["text"]
 
-    # Duplicate should be suppressed
+    # Duplicate identical message within 3 mins should be suppressed
     dup_success = await forwarder.forward_custom_passenger_request(
         chat_id=-1003726192046,
         message_id=501,
@@ -277,20 +277,14 @@ async def test_historical_messages_skipped():
 
 
 @pytest.mark.asyncio
-async def test_user_24h_cooldown():
-    """Verify that a user who sends multiple requests within 24 hours is skipped after the 1st forward."""
-    from app.services.forwarding import UserCooldownRegistry
+async def test_user_cooldown_disabled():
+    """Verify that 24h user blocking is disabled (users are NOT blocked from ordering again)."""
+    settings = Settings(BOT_TOKEN="123:abc")
+    forwarder = ForwardingService(bot=AsyncMock(), settings=settings)
 
-    registry = UserCooldownRegistry(cooldown_seconds=86400)
-    user_id = 554433
-
-    assert registry.is_on_cooldown(user_id) is False
-    registry.record(user_id)
-    assert registry.is_on_cooldown(user_id) is True
-    assert registry.get_remaining_hours(user_id) > 23.9
-
-    # Another user is not on cooldown
-    assert registry.is_on_cooldown(999999) is False
+    # Any user should NOT be on 24h cooldown
+    assert forwarder.is_user_on_cooldown(554433) is False
+    assert forwarder.get_user_remaining_cooldown_hours(554433) == 0.0
 
 
 @pytest.mark.asyncio

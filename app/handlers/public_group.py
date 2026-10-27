@@ -82,24 +82,7 @@ async def handle_public_group_message(message: types.Message) -> None:
             logger.debug("Skipping backlog message %s (age > 120s)", message.message_id)
             return
 
-    # 3. Check 24-hour user cooldown (skip repeat messages within 1 day)
-    forwarder = get_forwarding_service(message.bot)
-    is_cooldown = False
-    if hasattr(forwarder, "is_user_on_cooldown"):
-        check_val = forwarder.is_user_on_cooldown(user.id)
-        if isinstance(check_val, bool):
-            is_cooldown = check_val
-
-    if is_cooldown:
-        remaining = forwarder.get_user_remaining_cooldown_hours(user.id)
-        logger.info(
-            "⏭️ [USER 24H SKIP] User %s already forwarded within 1 day (%.1fh remaining). Skipping.",
-            user.id,
-            remaining,
-        )
-        return
-
-    # 4. Ignore commands (e.g. /id, /start) as they are handled by admin_router
+    # 3. Ignore commands (e.g. /id, /start) as they are handled by admin_router
     raw_text = extract_message_text(message)
     if not raw_text or raw_text.startswith("/"):
         return

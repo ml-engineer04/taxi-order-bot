@@ -217,24 +217,8 @@ def setup_userbot_listener(
 
         sender_id = event.sender_id or 0
 
-        # 4. Enforce 1-day (24h) skip window: if user already forwarded today, skip immediately
-        is_cooldown = False
-        if sender_id and hasattr(forwarder, "is_user_on_cooldown"):
-            check_val = forwarder.is_user_on_cooldown(sender_id)
-            if isinstance(check_val, bool):
-                is_cooldown = check_val
-
-        if is_cooldown:
-            remaining = forwarder.get_user_remaining_cooldown_hours(sender_id)
-            logger.info(
-                "⏭️ [USER 24H SKIP] User %s already forwarded in last 24h. Skipping without AI call (%.1fh remaining)",
-                sender_id,
-                remaining,
-            )
-            return
-
         try:
-            # 5. Retrieve sender details
+            # 4. Retrieve sender details
             sender = await event.get_sender()
             if sender and getattr(sender, "bot", False):
                 return

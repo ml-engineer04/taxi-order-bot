@@ -69,17 +69,18 @@ def test_build_passenger_card():
 
     card_text, reply_markup = forwarder.build_passenger_card(msg, result)
 
-    assert "YANGI YO'LOVCHI BUYURTMASI" in card_text
-    assert "Toshkent" in card_text
-    assert "Samarqand" in card_text
-    assert "2 ta joy" in card_text
-    assert "Ali" in card_text
-    assert "92%" in card_text
+    assert "YANGI YO‘LOVCHI" in card_text
+    assert "Toshkent → Samarqand" in card_text
+    assert "2 kishi" in card_text
+    assert "aniqlanmagan" in card_text
+    assert "<blockquote>" in card_text
+    # Confidence is excluded per user specification
+    assert "%" not in card_text
 
     buttons = reply_markup.inline_keyboard
     assert len(buttons) >= 2
-    assert "https://t.me/c/3726192046/45" in buttons[0][0].url
-    assert "https://t.me/ali_valiyev" in buttons[1][0].url
+    assert "https://t.me/ali_valiyev" in buttons[0][0].url
+    assert "https://t.me/c/3726192046/45" in buttons[1][0].url
 
 
 @pytest.mark.asyncio
