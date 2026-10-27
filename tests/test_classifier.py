@@ -51,3 +51,28 @@ async def test_overall_dataset_accuracy():
     accuracy = correct / total
     print(f"\n[BENCHMARK EVALUATION] Tested {total} samples. Accuracy: {accuracy * 100:.1f}% ({correct}/{total})")
     assert accuracy >= 0.95, f"Benchmark accuracy {accuracy * 100:.1f}% is below 95% threshold"
+
+
+@pytest.mark.asyncio
+async def test_driver_slang_rejection():
+    """Verify that driver announcements with 'ta kam', 'joy bor' etc are rejected."""
+    driver_messages = [
+        """АЗОН 3/4  ГА ТОШКЕНТГА
+
+         1. ТА  КАМ
+
+БУВАЙДА ЯНГИКУРГОН
+
+       АТРОФИДАН
+
++998772574100""",
+        "Toshkentga 1 ta kam yuramiz",
+        "Samarqandga 2 ta kam cobalt",
+        "Qo'qonga bitta kam shoshilinch",
+        "Andijonga 3 ta joy bor yuramiz",
+        "Odam olamiz Toshkentga salon bosh",
+    ]
+
+    for msg in driver_messages:
+        res = await classifier.classify(msg)
+        assert res.is_passenger_request is False, f"Expected False for driver message: {msg}"

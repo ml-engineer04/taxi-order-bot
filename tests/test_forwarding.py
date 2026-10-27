@@ -76,11 +76,55 @@ def test_build_passenger_card():
     assert "<blockquote>" in card_text
     # Confidence is excluded per user specification
     assert "%" not in card_text
+    assert "Yo‘lovchi:" in card_text
+    assert "Ali" in card_text
 
     buttons = reply_markup.inline_keyboard
-    assert len(buttons) >= 2
+    assert len(buttons) == 1
     assert "https://t.me/ali_valiyev" in buttons[0][0].url
-    assert "https://t.me/c/3726192046/45" in buttons[1][0].url
+    assert "💬 Yo'lovchiga yozish" == buttons[0][0].text
+
+
+def test_build_passenger_card_without_username():
+    """Verify card generated for user without username has direct tg://user?id profile link and no keyboard."""
+    settings = Settings(
+        BOT_TOKEN="123456:fake_token",
+        ADMIN_USER_IDS="111",
+        PRIVATE_GROUP_ID=-1004465107293,
+    )
+    forwarder = ForwardingService(bot=None, settings=settings)
+
+    chat = types.Chat(id=-1003726192046, type="supergroup")
+    user = types.User(id=8623889331, is_bot=False, first_name="M-CBDE", username=None)
+    msg = types.Message(
+        message_id=50,
+        date=1700000000,
+        chat=chat,
+        from_user=user,
+        text="Andijondan Toshkentga odam bor +998901234567",
+    )
+
+    result = ClassificationResult(
+        is_passenger_request=True,
+        confidence=0.92,
+        origin="Andijon",
+        destination="Toshkent",
+        seats=1,
+        reason="Test",
+        method="rule_based",
+    )
+
+    card_text, reply_markup = forwarder.build_passenger_card(msg, result)
+
+    assert "YANGI YO‘LOVCHI" in card_text
+    assert "Andijon → Toshkent" in card_text
+    assert "1 kishi" in card_text
+    assert 'tg://user?id=8623889331' in card_text
+    assert 'M-CBDE' in card_text
+    assert '+998901234567' in card_text
+
+    # For users without username, no button is attached since group link was removed
+    assert reply_markup is None
 
 
 @pytest.mark.asyncio
@@ -88,6 +132,7 @@ async def test_telegram_api_error_handling():
     """Verify that Telegram API errors are caught gracefully without uncaught exceptions."""
     mock_bot = AsyncMock()
     mock_bot.send_message.side_effect = TelegramAPIError(method="sendMessage", message="Chat not found")
+    mock_bot.forward_message.side_effect = TelegramAPIError(method="forwardMessage", message="Chat not found")
 
     settings = Settings(
         BOT_TOKEN="123456:fake",

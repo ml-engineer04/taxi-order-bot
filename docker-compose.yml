@@ -12,6 +12,8 @@ services:
     environment:
       # Automatically connect to the containerized PostgreSQL service
       - DATABASE_URL=postgresql+asyncpg://taxi_user:taxi_secure_password@postgres:5432/taxi_bot
+    volumes:
+      - ./data:/app/data
     depends_on:
       postgres:
         condition: service_healthy

@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import html
 import logging
+import re
 import time
 from typing import Dict, Optional, Tuple
 from aiogram import Bot, types
@@ -15,6 +16,18 @@ from app.services.classification.base import ClassificationResult
 from app.services.normalization.transliterator import normalize_uzbek_text
 
 logger = logging.getLogger(__name__)
+
+
+def clean_display_name(raw_name: Optional[str]) -> str:
+    """Clean and sanitize display name, stripping spam/control glyphs and Cuneiform spam."""
+    if not raw_name:
+        return "Yo'lovchi"
+    # Remove control chars and high supplementary unicode (Cuneiform, unprintable blocks)
+    cleaned = re.sub(r"[\u0000-\u001f\u007f-\u009f\U00010000-\U0010ffff]", "", raw_name).strip()
+    cleaned = re.sub(r"[^a-zA-Z0-9\u0400-\u04ff\s\.\-\'\`’ʻ_]", "", cleaned).strip()
+    if not cleaned or len(cleaned) < 2:
+        return "Yo'lovchi"
+    return cleaned[:35]
 
 
 class DeduplicationCache:
@@ -108,6 +121,8 @@ class ForwardingService:
         message_id: int,
         time_val: Optional[str] = None,
         chat_username: Optional[str] = None,
+        user_id: Optional[int] = None,
+        passenger_name: Optional[str] = None,
         **kwargs,
     ) -> Tuple[str, types.InlineKeyboardMarkup]:
         """Construct an informative HTML card matching the user's requested clean design."""
@@ -126,30 +141,52 @@ class ForwardingService:
         seats_str = f"{seats} kishi" if seats else "aniqlanmagan"
         time_str = time_val or "aniqlanmagan"
 
+        # Passenger name & profile link
+        clean_name = html.escape(clean_display_name(passenger_name))
+        if passenger_username:
+            clean_username = passenger_username.lstrip("@").strip()
+            passenger_link = f'<a href="https://t.me/{clean_username}">{clean_name}</a> (@{clean_username})'
+        elif user_id and user_id > 0:
+            passenger_link = f'<a href="tg://user?id={user_id}">{clean_name}</a>'
+        else:
+            passenger_link = clean_name
+
+        # Phone number detection in raw_text
+        phone_match = re.search(r"(\+?998[\s-]?\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})", raw_text)
+        phone_str = None
+        if phone_match:
+            phone_str = phone_match.group(1).replace(" ", "").replace("-", "")
+            if not phone_str.startswith("+"):
+                phone_str = f"+{phone_str}"
+
         card_lines = [
             "🚕 <b>YANGI YO‘LOVCHI</b>",
             f"📍 <b>{route_str}</b>",
+            f"👤 <b>Yo‘lovchi:</b> {passenger_link}",
             f"👥 <b>Yo‘lovchilar:</b> {seats_str}",
             f"🕒 <b>Vaqt:</b> {time_str}",
+        ]
+        if phone_str:
+            card_lines.append(f"📞 <b>Telefon:</b> {phone_str}")
+
+        card_lines.extend([
             "",
             "💬 <b>Asl xabar:</b>",
             f"<blockquote>{escaped_text}</blockquote>",
-        ]
+        ])
         text = "\n".join(card_lines)
 
         builder = InlineKeyboardBuilder()
 
-        # Primary button: Yo'lovchiga yozish
+        # Primary button: Yo'lovchiga yozish (only if valid username exists)
         if passenger_username:
-            clean_username = passenger_username.lstrip("@")
-            builder.button(text="💬 Yo'lovchiga yozish", url=f"https://t.me/{clean_username}")
+            clean_username = passenger_username.lstrip("@").strip()
+            if clean_username:
+                builder.button(text="💬 Yo'lovchiga yozish", url=f"https://t.me/{clean_username}")
+                builder.adjust(1)
 
-        # Secondary button: Xabarni guruhda ochish
-        msg_link = self.construct_message_link(chat_id, message_id, chat_username)
-        builder.button(text="🔗 Xabarni guruhda ochish", url=msg_link)
-
-        builder.adjust(1)
-        return text, builder.as_markup()
+        reply_markup = builder.as_markup() if len(builder.as_markup().inline_keyboard) > 0 else None
+        return text, reply_markup
 
     def build_passenger_card(
         self,
@@ -166,6 +203,8 @@ class ForwardingService:
             time_val=getattr(classification, "time", None),
             raw_text=raw_text,
             passenger_username=user.username if user else None,
+            user_id=user.id if user else None,
+            passenger_name=user.full_name if user else None,
             chat_id=message.chat.id,
             message_id=message.message_id,
             chat_username=message.chat.username,
@@ -187,6 +226,10 @@ class ForwardingService:
         user = message.from_user
         user_id = user.id if user else 0
         raw_text = message.text or message.caption or ""
+        chat_id = message.chat.id
+        message_id = message.message_id
+        chat_username = message.chat.username
+        passenger_name = user.full_name if user else "Yo'lovchi"
 
         # Check short deduplication (avoid exact duplicate sends within 3 mins)
         if self.deduplicator.is_duplicate(user_id, raw_text):
@@ -252,8 +295,40 @@ class ForwardingService:
                 logger.warning("Telegram rate limit hit. Sleeping for %s seconds...", e.retry_after)
                 await asyncio.sleep(e.retry_after)
             except TelegramAPIError as e:
-                logger.error("Failed to forward message to VIP group %s: %s", target_chat_id, e)
-                return False
+                logger.error("Failed to forward card to VIP group %s: %s. Attempting fallback...", target_chat_id, e)
+                # Fallback 1: Try native forward if bot is member of group
+                try:
+                    await self.bot.forward_message(
+                        chat_id=target_chat_id,
+                        from_chat_id=chat_id,
+                        message_id=message_id,
+                    )
+                    self.deduplicator.record(user_id, raw_text)
+                    logger.info("✅ Fallback native forward succeeded to VIP group %s", target_chat_id)
+                    return True
+                except Exception as fwd_err:
+                    logger.warning("Native forward failed (%s). Sending clean text fallback...", fwd_err)
+                    try:
+                        clean_name = html.escape((passenger_name or "").strip() or "Yo'lovchi")
+                        user_ref = f'<a href="tg://user?id={user_id}">{clean_name}</a>' if (user_id and user_id > 0) else clean_name
+                        fallback_text = (
+                            "🚕 <b>YANGI YO‘LOVCHI</b>\n"
+                            f"👤 <b>Yo‘lovchi:</b> {user_ref}\n\n"
+                            "💬 <b>Asl xabar:</b>\n"
+                            f"<blockquote>{html.escape(raw_text)}</blockquote>"
+                        )
+                        await self.bot.send_message(
+                            chat_id=target_chat_id,
+                            text=fallback_text,
+                            parse_mode="HTML",
+                            disable_web_page_preview=True,
+                        )
+                        self.deduplicator.record(user_id, raw_text)
+                        logger.info("✅ Fallback clean text send succeeded to VIP group %s", target_chat_id)
+                        return True
+                    except Exception as final_err:
+                        logger.error("All fallback forwarding methods failed for VIP group %s: %s", target_chat_id, final_err)
+                        return False
             except Exception as e:
                 logger.exception("Unexpected error while forwarding message: %s", e)
                 return False
@@ -284,6 +359,23 @@ class ForwardingService:
         max_retries = 2
         for attempt in range(max_retries):
             try:
+                # 1. If FORWARD_MODE is 'forward', Bot attempts native forward_message first
+                if self.settings.forward_mode == "forward":
+                    try:
+                        await self.bot.forward_message(
+                            chat_id=target_chat_id,
+                            from_chat_id=chat_id,
+                            message_id=message_id,
+                        )
+                        self.deduplicator.record(user_id, raw_text)
+                        logger.info("✅ Bot native forward succeeded to VIP group %s", target_chat_id)
+                        return True
+                    except Exception as fwd_err:
+                        logger.warning(
+                            "Bot forward_message failed (%s). Falling back to enriched card...",
+                            fwd_err,
+                        )
+
                 card_text, reply_markup = self.build_card_payload(
                     origin=classification.origin,
                     destination=classification.destination,
@@ -291,6 +383,8 @@ class ForwardingService:
                     time_val=getattr(classification, "time", None),
                     raw_text=raw_text,
                     passenger_username=passenger_username,
+                    user_id=user_id,
+                    passenger_name=passenger_name,
                     chat_id=chat_id,
                     message_id=message_id,
                     chat_username=chat_username,
@@ -337,8 +431,40 @@ class ForwardingService:
                 logger.warning("Telegram rate limit hit. Sleeping for %s seconds...", e.retry_after)
                 await asyncio.sleep(e.retry_after)
             except TelegramAPIError as e:
-                logger.error("Failed to forward message to VIP group %s: %s", target_chat_id, e)
-                return False
+                logger.error("Failed to forward card to VIP group %s: %s. Attempting fallback...", target_chat_id, e)
+                # Fallback 1: Try native forward if bot is member of group
+                try:
+                    await self.bot.forward_message(
+                        chat_id=target_chat_id,
+                        from_chat_id=chat_id,
+                        message_id=message_id,
+                    )
+                    self.deduplicator.record(user_id, raw_text)
+                    logger.info("✅ Fallback native forward succeeded to VIP group %s", target_chat_id)
+                    return True
+                except Exception as fwd_err:
+                    logger.warning("Native forward failed (%s). Sending clean text fallback...", fwd_err)
+                    try:
+                        clean_name = html.escape((passenger_name or "").strip() or "Yo'lovchi")
+                        user_ref = f'<a href="tg://user?id={user_id}">{clean_name}</a>' if (user_id and user_id > 0) else clean_name
+                        fallback_text = (
+                            "🚕 <b>YANGI YO‘LOVCHI</b>\n"
+                            f"👤 <b>Yo‘lovchi:</b> {user_ref}\n\n"
+                            "💬 <b>Asl xabar:</b>\n"
+                            f"<blockquote>{html.escape(raw_text)}</blockquote>"
+                        )
+                        await self.bot.send_message(
+                            chat_id=target_chat_id,
+                            text=fallback_text,
+                            parse_mode="HTML",
+                            disable_web_page_preview=True,
+                        )
+                        self.deduplicator.record(user_id, raw_text)
+                        logger.info("✅ Fallback clean text send succeeded to VIP group %s", target_chat_id)
+                        return True
+                    except Exception as final_err:
+                        logger.error("All fallback forwarding methods failed for VIP group %s: %s", target_chat_id, final_err)
+                        return False
             except Exception as e:
                 logger.exception("Unexpected error while forwarding message: %s", e)
                 return False

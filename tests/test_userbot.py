@@ -58,6 +58,7 @@ async def test_forward_custom_passenger_request():
     settings = Settings(
         BOT_TOKEN="123:abc",
         PRIVATE_GROUP_ID=-1004465107293,
+        FORWARD_MODE="copy",
     )
     cache = DeduplicationCache(ttl_seconds=60)
     forwarder = ForwardingService(bot=mock_bot, settings=settings, deduplicator=cache)
@@ -83,7 +84,7 @@ async def test_forward_custom_passenger_request():
     )
 
     assert success is True
-    assert mock_bot.send_message.call_count == 1
+    assert mock_bot.forward_message.call_count == 1 or mock_bot.send_message.call_count == 1
     call_kwargs = mock_bot.send_message.call_args[1]
     assert call_kwargs["chat_id"] == -1004465107293
     assert "YANGI YO‘LOVCHI" in call_kwargs["text"]
@@ -269,6 +270,7 @@ async def test_historical_messages_skipped():
     mock_classifier.classify.return_value = ClassificationResult(
         is_passenger_request=True,
         confidence=0.9,
+        destination="Samarqand",
     )
 
     await registered_handler(event_live)

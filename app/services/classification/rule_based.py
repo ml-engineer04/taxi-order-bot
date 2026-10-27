@@ -10,17 +10,42 @@ from app.services.classification.data.uzbek_locations import (
 )
 from app.services.normalization.transliterator import normalize_uzbek_text
 
-# Negative Patterns: Messages indicating a driver offering rides, cargo transport, or delivery
+# Strict Negative Patterns: Definitive driver offers, vehicle capacity, or collection announcements
+STRICT_DRIVER_PATTERNS = [
+    # Uzbek taxi driver slang: "X ta kam" / "kam" = driver has X seats remaining until full
+    re.compile(r"\b(\d+|bitta|ikkita|uchta|to'rtta|tortta)\.?\s*ta\s*kam\b"),
+    re.compile(r"\b(\d+)\s*kam\b"),
+    re.compile(r"\b(bitta|ikkita)\s+kam\b"),
+    # Picking up passengers or cargo
+    re.compile(r"\b(odam|yolovchi|yo'lovchi|klient|klent)\s+(olaman|olamiz|olamz|olamiza)\b"),
+    re.compile(r"\b(pochta|yuk)\s+(olaman|olamiz|olamz)\b"),
+    re.compile(r"\b(salon|bagaj|bagajnik)\s*(bosh|bo'sh)\b"),
+]
+
+# Negative Patterns: Driver offers, vehicle announcements, cargo transport
 DRIVER_PATTERNS = [
-    re.compile(r"\b(olib\s+boraman|olib\s+boramiz|olib\s+ketaman|olib\s+ketamiz)\b"),
-    re.compile(r"\b(odam\s+olaman|odam\s+olamiz|yolovchi\s+olaman|yo'lovchi\s+olaman|yo'lovchi\s+olamiz)\b"),
-    re.compile(r"\b(pochta\s+olaman|pochta\s+olamiz|pochta\s+bor\b|yuk\s+olaman|yuk\s+olamiz)\b"),
+    re.compile(r"\b(olib\s+boraman|olib\s+boramiz|olib\s+boramz|olib\s+ketaman|olib\s+ketamiz|olib\s+ketamz)\b"),
+    re.compile(r"\b(pochta|yuk|posilka|dostavka|dastavka)\s+bor\b"),
     re.compile(r"\b(yuk\s+tashish|dostavka|dastavka|dastafka)\b"),
-    re.compile(r"\b(mashina\s+bor|moshina\s+bor)\b"),
+    re.compile(r"\b(mashina|moshina|kobalt|cobalt|gentra|lasetti|lacetti|damas|nexia|neksiya|treker|tracker|onix)\s+bor\b"),
+    re.compile(r"\b(joy|joylar)\s+bor\b"),
     re.compile(r"\b(joy\s+bo'sh|joy\s+bosh|bo'sh\s+joy|bosh\s+joy)\b"),
     re.compile(r"\b(yuramiz\s+hozir|yuraman\s+hozir|hozir\s+yuramiz|bosh\s+mashina|bo'sh\s+mashina)\b"),
-    re.compile(r"\b(salon\s+bosh|salon\s+bo'sh)\b"),
+    re.compile(r"\b(ketamiz\s+kim\s+bor|ketamz\s+kim\s+bor)\b"),
 ]
+
+def check_driver_patterns(norm: str) -> Optional[str]:
+    """Check if normalized text contains definitive driver announcement patterns."""
+    for pat in STRICT_DRIVER_PATTERNS:
+        if pat.search(norm):
+            return "Driver offer detected (e.g. 'ta kam', 'odam olamiz', 'salon bo'sh')"
+
+    has_inquiry = bool(re.search(r"\b(bormi|bormikan|kerak|keremi|kerek|zarur|lozim)\b", norm))
+    if not has_inquiry:
+        for pat in DRIVER_PATTERNS:
+            if pat.search(norm):
+                return "Driver offer detected (e.g. 'joy bor', 'mashina bor', 'olib ketamiz')"
+    return None
 
 # Irrelevant Non-Transport Keywords
 NON_TRANSPORT_PATTERNS = [
@@ -149,15 +174,14 @@ class RuleBasedClassifier(BaseClassifier):
         norm = normalize_uzbek_text(raw_text)
 
         # 2. Check Negative Driver Patterns
-        for pat in DRIVER_PATTERNS:
-            if pat.search(norm):
-                if not re.search(r"\b(bormi|bormikan)\b", norm):
-                    return ClassificationResult(
-                        is_passenger_request=False,
-                        confidence=0.05,
-                        reason="Driver offering ride or cargo delivery",
-                        method="rule_based",
-                    )
+        driver_reason = check_driver_patterns(norm)
+        if driver_reason:
+            return ClassificationResult(
+                is_passenger_request=False,
+                confidence=0.05,
+                reason=driver_reason,
+                method="rule_based",
+            )
 
         # 3. Check Negative Non-Transport Patterns
         for pat in NON_TRANSPORT_PATTERNS:

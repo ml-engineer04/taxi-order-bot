@@ -20,7 +20,7 @@ from app.config import Settings
 from app.database.session import get_db_session
 from app.repositories.collected_repo import CollectedMessageRepository
 from app.services.classification.base import BaseClassifier
-from app.services.forwarding import ForwardingService
+from app.services.forwarding import ForwardingService, clean_display_name
 
 logger = logging.getLogger(__name__)
 
@@ -242,7 +242,17 @@ def setup_userbot_listener(
             # 7. Classify passenger transport intent
             result = await classifier.classify(raw_text)
 
-            user_display = f"@{sender_username}" if sender_username else f"{sender_name} ({sender_id})"
+            # Strict Guard: A genuine passenger request MUST specify origin or destination!
+            # Random chatter, questions, or gibberish without a route are never passenger requests.
+            if result.is_passenger_request and not (result.destination or result.origin):
+                logger.info(
+                    "⏭️ [USERBOT SKIPPED] Passenger flag ignored: No origin/destination in '%s'",
+                    raw_text,
+                )
+                result.is_passenger_request = False
+
+            sanitized_sender_name = clean_display_name(sender_name)
+            user_display = f"@{sender_username}" if sender_username else f"{sanitized_sender_name} ({sender_id})"
 
             if result.is_passenger_request:
                 logger.info(
@@ -256,14 +266,14 @@ def setup_userbot_listener(
                     chat_id,
                 )
 
-                # 8. Forward verified passenger card to VIP private group
+                # Userbot strictly monitors; dispatching to VIP group is always performed by the Bot
                 await forwarder.forward_custom_passenger_request(
                     chat_id=chat_id,
                     message_id=event.id,
                     user_id=sender_id,
                     raw_text=raw_text,
                     classification=result,
-                    passenger_name=sender_name,
+                    passenger_name=sanitized_sender_name,
                     passenger_username=sender_username,
                     chat_username=chat_username,
                 )

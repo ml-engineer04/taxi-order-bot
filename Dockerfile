@@ -25,7 +25,8 @@ COPY alembic/ alembic/
 COPY app/ app/
 
 # Create a non-root application user for container security
-RUN useradd -m -u 1000 appuser && \
+RUN mkdir -p /app/data && \
+    useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 
 USER appuser

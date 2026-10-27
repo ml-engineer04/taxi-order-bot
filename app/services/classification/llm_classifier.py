@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Optional
 from app.services.classification.base import BaseClassifier, ClassificationResult
+from app.services.classification.rule_based import check_driver_patterns
+from app.services.normalization.transliterator import normalize_uzbek_text
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,25 @@ class LLMClassifier(BaseClassifier):
 
     async def classify(self, raw_text: str) -> ClassificationResult:
         """Analyze message with LLM if API key is provided, or delegate to fallback."""
+        if not raw_text or len(raw_text.strip()) < 4:
+            return ClassificationResult(
+                is_passenger_request=False,
+                confidence=0.0,
+                reason="Text too short",
+                method="pre_filter",
+            )
+
+        # 1. Fast guard: Reject definitive driver offers immediately
+        norm = normalize_uzbek_text(raw_text)
+        driver_reason = check_driver_patterns(norm)
+        if driver_reason:
+            return ClassificationResult(
+                is_passenger_request=False,
+                confidence=0.99,
+                reason=driver_reason,
+                method="rule_driver_guard",
+            )
+
         if not self.api_key:
             if self.fallback_classifier:
                 return await self.fallback_classifier.classify(raw_text)
@@ -39,10 +60,21 @@ class LLMClassifier(BaseClassifier):
         # Prompt for strict JSON evaluation tailored for Uzbekistan taxi groups
         system_prompt = (
             "You are an expert AI assistant for Uzbekistan intercity taxi groups. "
-            "Analyze incoming group messages written in Uzbek (Latin, Cyrillic, or mixed) and classify them. "
-            "1. PASSENGER: A person seeking a ride/taxi (e.g., 'Toshkentga odam bor', 'Samarqandga 2 ta joy kerak', 'Chirchiqqa mashina bormi'). "
-            "2. DRIVER: A driver offering transport, seats, or delivery (e.g., 'odam olaman', '3 ta joy bor yuramiz', 'salon bosh'). "
-            "3. OTHER: Greetings, news, car sales, non-transport chatter. "
+            "Analyze incoming group messages written in Uzbek (Latin, Cyrillic, or mixed) and classify them:\n\n"
+            "CRITICAL UZBEK TAXI DIALECT RULES:\n"
+            "1. DRIVER ANNOUNCEMENTS (is_passenger = false):\n"
+            "   - 'X ta kam' / 'kam' (e.g., '1 ta kam', '2 ta kam', '1. ТА КАМ', 'bitta kam') ALWAYS means DRIVER has X seats remaining until full. NEVER a passenger request!\n"
+            "   - 'joy bor', 'joylar bor', 'salon bo'sh/bosh' = DRIVER has empty seats. Contrast with 'joy kerak'/'joy bormi' = passenger.\n"
+            "   - 'odam olamiz', 'klient olamiz', 'pochta olamiz', 'olib ketamiz' = DRIVER picking up passengers or cargo.\n"
+            "   - 'mashina bor', 'damas bor', 'kobalt bor', 'yuramiz hozir', 'ketamiz kim bor' = DRIVER.\n"
+            "   - Driver posts usually announce departure times, route, remaining seats, and phone number (e.g., 'Azon 3/4 ga Toshkentga 1 ta kam +998...').\n\n"
+            "2. PASSENGER REQUESTS (is_passenger = true):\n"
+            "   - Real passenger seeking transport: 'odam bor' (we have people waiting), '2 kishi bor', '2 kishimiz', '3 ta odam bor'.\n"
+            "   - 'joy kerak', 'mashina kerak', 'taksi kerak', 'taksi bormi', 'ketadigan bormi', 'olib ketadigan bormi'.\n"
+            "   - 'Toshkentga ketishim kerak', 'Samarqandga 2 ta joy kerak'.\n"
+            "   - CRITICAL: A passenger request MUST clearly specify a destination or departure place. Random chatter, questions ('padashka bormi', 'kim bor'), screen sharing, or non-transport chatter are NOT passenger requests (is_passenger = false)!\n\n"
+            "3. OTHER (is_passenger = false):\n"
+            "   - Greetings, car selling, currency exchange, news, non-transport chatter.\n\n"
             "Respond ONLY with valid JSON in this exact structure: "
             '{"is_passenger": bool, "confidence": float, "origin": str|null, "destination": str|null, "seats": int|null, "reason": str}'
         )
@@ -75,11 +107,17 @@ class LLMClassifier(BaseClassifier):
                         data = await response.json()
                         content = data["choices"][0]["message"]["content"]
                         parsed = json.loads(content)
+                        is_passenger = bool(parsed.get("is_passenger", False))
+                        origin_val = parsed.get("origin")
+                        dest_val = parsed.get("destination")
+                        if is_passenger and not (origin_val or dest_val):
+                            is_passenger = False
+
                         return ClassificationResult(
-                            is_passenger_request=bool(parsed.get("is_passenger", False)),
-                            confidence=float(parsed.get("confidence", 0.95)),
-                            origin=parsed.get("origin"),
-                            destination=parsed.get("destination"),
+                            is_passenger_request=is_passenger,
+                            confidence=float(parsed.get("confidence", 0.95)) if is_passenger else 0.20,
+                            origin=origin_val.capitalize() if origin_val else None,
+                            destination=dest_val.capitalize() if dest_val else None,
                             seats=parsed.get("seats"),
                             reason=parsed.get("reason", "OpenAI decision"),
                             method="openai",
