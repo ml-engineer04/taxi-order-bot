@@ -76,7 +76,7 @@ print('Baza sozlamalari tayyor.')
 echo -e "\n${YELLOW}[6/6] Bot xizmati qayta ishga tushirilmoqda (Systemd)...${NC}"
 SERVICE_NAME="taxi_bot"
 
-if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q "${SERVICE_NAME}.service"; then
+if command -v systemctl >/dev/null 2>&1 && (systemctl cat "${SERVICE_NAME}.service" >/dev/null 2>&1 || [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]); then
     echo -e "Servis qayta ishga tushirilmoqda: ${SERVICE_NAME}..."
     sudo systemctl restart "${SERVICE_NAME}"
     sleep 2
