@@ -59,24 +59,29 @@ class LLMClassifier(BaseClassifier):
 
         # Prompt for strict JSON evaluation tailored for Uzbekistan taxi groups
         system_prompt = (
-            "You are an expert AI assistant for Uzbekistan intercity taxi groups. "
+            "You are an expert AI assistant for Uzbekistan intercity taxi and parcel/cargo delivery groups. "
             "Analyze incoming group messages written in Uzbek (Latin, Cyrillic, or mixed) and classify them:\n\n"
-            "CRITICAL UZBEK TAXI DIALECT RULES:\n"
-            "1. DRIVER ANNOUNCEMENTS (is_passenger = false):\n"
-            "   - 'X ta kam' / 'kam' (e.g., '1 ta kam', '2 ta kam', '1. ТА КАМ', 'bitta kam') ALWAYS means DRIVER has X seats remaining until full. NEVER a passenger request!\n"
-            "   - 'joy bor', 'joylar bor', 'salon bo'sh/bosh' = DRIVER has empty seats. Contrast with 'joy kerak'/'joy bormi' = passenger.\n"
-            "   - 'odam olamiz', 'klient olamiz', 'pochta olamiz', 'olib ketamiz' = DRIVER picking up passengers or cargo.\n"
+            "CRITICAL RULES:\n"
+            "1. DRIVER ANNOUNCEMENTS (is_order = false):\n"
+            "   - 'X ta kam' / 'kam' (e.g., '1 ta kam', '2 ta kam') ALWAYS means DRIVER has remaining seats. NEVER an order!\n"
+            "   - 'X ta odam zarur/zarul/kerak' (e.g. '2 ta odam zarul') = DRIVER needs passengers to fill empty car seats. NEVER an order!\n"
+            "   - 'poshta olaman' / 'pochta olamiz' / 'poshta olamiz' / 'yuk olamiz' / 'odam olamiz' = DRIVER picking up passengers or cargo. Senders/passengers NEVER say 'olaman' or 'olamiz'!\n"
+            "   - 'joy bor', 'joylar bor', 'salon bo'sh/bosh' = DRIVER has empty seats.\n"
             "   - 'mashina bor', 'damas bor', 'kobalt bor', 'yuramiz hozir', 'ketamiz kim bor' = DRIVER.\n"
-            "   - Driver posts usually announce departure times, route, remaining seats, and phone number (e.g., 'Azon 3/4 ga Toshkentga 1 ta kam +998...').\n\n"
-            "2. PASSENGER REQUESTS (is_passenger = true):\n"
-            "   - Real passenger seeking transport: 'odam bor' (we have people waiting), '2 kishi bor', '2 kishimiz', '3 ta odam bor'.\n"
-            "   - 'joy kerak', 'mashina kerak', 'taksi kerak', 'taksi bormi', 'ketadigan bormi', 'olib ketadigan bormi'.\n"
-            "   - 'Toshkentga ketishim kerak', 'Samarqandga 2 ta joy kerak'.\n"
-            "   - CRITICAL: A passenger request MUST clearly specify a destination or departure place. Random chatter, questions ('padashka bormi', 'kim bor'), screen sharing, or non-transport chatter are NOT passenger requests (is_passenger = false)!\n\n"
-            "3. OTHER (is_passenger = false):\n"
+            "   - Driver posts usually announce departure times, route, vehicle, and phone number.\n\n"
+            "2. CUSTOMER ORDERS (is_order = true) - WE FORWARD BOTH PASSENGER AND POCHTA/CARGO REQUESTS:\n"
+            "   A. Passenger requests (order_type = 'passenger'):\n"
+            "      - 'odam bor' (passengers waiting), '2 kishi bor', '2 kishimiz', '3 ta odam bor'.\n"
+            "      - 'joy kerak', 'mashina kerak', 'taksi kerak', 'taksi bormi', 'ketadigan bormi'.\n"
+            "      - 'Toshkentga ketishim kerak', 'Samarqandga 2 ta joy kerak'.\n"
+            "   B. Parcel / Cargo requests (order_type = 'cargo'):\n"
+            "      - Customer has a parcel or cargo to send: 'pochta bor', 'poshta bor', 'yuk bor', 'posilka bor', 'korobka bor'.\n"
+            "      - 'pochta berib yuborish kerak', 'poshta olib ketadigan bormi', 'yuk bor mashina kerak', 'bervorgani odam bormi'.\n"
+            "   - CRITICAL: A customer order MUST clearly specify a destination or departure place. Non-transport chatter is NOT an order (is_order = false)!\n\n"
+            "3. OTHER (is_order = false):\n"
             "   - Greetings, car selling, currency exchange, news, non-transport chatter.\n\n"
             "Respond ONLY with valid JSON in this exact structure: "
-            '{"is_passenger": bool, "confidence": float, "origin": str|null, "destination": str|null, "seats": int|null, "reason": str}'
+            '{"is_order": bool, "order_type": "passenger"|"cargo", "confidence": float, "origin": str|null, "destination": str|null, "seats": int|null, "time": str|null, "reason": str}'
         )
 
         try:
@@ -106,19 +111,50 @@ class LLMClassifier(BaseClassifier):
                     if response.status == 200:
                         data = await response.json()
                         content = data["choices"][0]["message"]["content"]
-                        parsed = json.loads(content)
-                        is_passenger = bool(parsed.get("is_passenger", False))
+                        parsed = None
+                        if content:
+                            try:
+                                parsed = json.loads(content)
+                            except json.JSONDecodeError:
+                                match = re.search(r"\{.*\}", content, re.DOTALL)
+                                if match:
+                                    try:
+                                        parsed = json.loads(match.group(0))
+                                    except json.JSONDecodeError:
+                                        pass
+
+                        if not parsed:
+                            if self.fallback_classifier:
+                                return await self.fallback_classifier.classify(raw_text)
+                            return ClassificationResult(
+                                is_passenger_request=False,
+                                confidence=0.30,
+                                reason="OpenAI unparseable JSON",
+                                method="llm_unparseable",
+                            )
+                        is_order = bool(parsed.get("is_order", parsed.get("is_passenger", False)))
+                        order_type_val = parsed.get("order_type")
+                        if not order_type_val or order_type_val not in ("cargo", "passenger"):
+                            order_type_val = (
+                                "cargo"
+                                if re.search(
+                                    r"\b(pochta|poshta|poshda|yuk|posilka|korobka|dastavka|dostavka)\b",
+                                    raw_text,
+                                    re.IGNORECASE,
+                                )
+                                else "passenger"
+                            )
                         origin_val = parsed.get("origin")
                         dest_val = parsed.get("destination")
-                        if is_passenger and not (origin_val or dest_val):
-                            is_passenger = False
 
                         return ClassificationResult(
-                            is_passenger_request=is_passenger,
-                            confidence=float(parsed.get("confidence", 0.95)) if is_passenger else 0.20,
+                            is_passenger_request=is_order,
+                            order_type=order_type_val,
+                            confidence=float(parsed.get("confidence", 0.95)) if is_order else 0.20,
                             origin=origin_val.capitalize() if origin_val else None,
                             destination=dest_val.capitalize() if dest_val else None,
                             seats=parsed.get("seats"),
+                            time=str(parsed.get("time")).strip() if parsed.get("time") else None,
                             reason=parsed.get("reason", "OpenAI decision"),
                             method="openai",
                         )

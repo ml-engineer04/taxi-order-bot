@@ -25,7 +25,7 @@ class Settings(BaseSettings):
         alias="ADMIN_USER_IDS",
     )
     admin_username: str = Field(
-        default="admin",
+        default="rahmonjon_qosimov",
         description="Telegram username for driver inquiries (without @)",
         alias="ADMIN_USERNAME",
     )
@@ -78,10 +78,20 @@ class Settings(BaseSettings):
     )
 
     # Classification & AI
-    classifier_type: Literal["claude", "anthropic", "ml", "rule", "hybrid", "llm", "openai"] = Field(
-        default="claude",
-        description="Classifier engine: 'claude' (Anthropic Claude AI), 'ml' (local ML), 'llm' (OpenAI), or 'rule'",
+    classifier_type: Literal["deepseek", "claude", "anthropic", "ml", "rule", "hybrid", "llm", "openai"] = Field(
+        default="deepseek",
+        description="Classifier engine: 'deepseek' (DeepSeek-V3), 'claude' (Anthropic Claude), 'ml' (local ML), 'llm' (OpenAI), or 'rule'",
         alias="CLASSIFIER_TYPE",
+    )
+    deepseek_api_key: Union[SecretStr, None] = Field(
+        default=None,
+        description="Optional DeepSeek API key for classification",
+        alias="DEEPSEEK_API_KEY",
+    )
+    deepseek_model: str = Field(
+        default="deepseek-chat",
+        description="DeepSeek model name (e.g. deepseek-chat)",
+        alias="DEEPSEEK_MODEL",
     )
     ml_model_path: str = Field(
         default="app/ml/models/taxi_classifier.joblib",
@@ -109,6 +119,16 @@ class Settings(BaseSettings):
         default=None,
         description="Optional Anthropic Claude API key",
         alias="ANTHROPIC_API_KEY",
+    )
+    groq_api_key: Union[SecretStr, None] = Field(
+        default=None,
+        description="Optional Groq Cloud API key for ultra-fast Speech-to-Text (Whisper)",
+        alias="GROQ_API_KEY",
+    )
+    voice_transcription_enabled: bool = Field(
+        default=True,
+        description="Whether to transcribe incoming voice messages into text",
+        alias="VOICE_TRANSCRIPTION_ENABLED",
     )
 
     # Telegram Userbot (MTProto)

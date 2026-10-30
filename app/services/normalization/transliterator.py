@@ -96,10 +96,16 @@ def to_latin(text: str) -> str:
 def normalize_uzbek_text(raw_text: str) -> str:
     """
     Complete normalization pipeline:
-    1. Clean whitespace and apostrophe variants.
-    2. Transliterate any Cyrillic letters to Latin.
-    3. Re-clean apostrophes and extra spaces.
+    1. Unicode NFKC normalization (converts styled mathematical bold/italic/sans-serif fonts to standard characters).
+    2. Clean whitespace and apostrophe variants.
+    3. Transliterate any Cyrillic letters to Latin.
+    4. Re-clean apostrophes and extra spaces.
     """
-    cleaned = clean_text(raw_text)
+    import unicodedata
+
+    if not raw_text:
+        return ""
+    nfkc = unicodedata.normalize("NFKC", raw_text)
+    cleaned = clean_text(nfkc)
     latin = to_latin(cleaned)
     return clean_text(latin)

@@ -6,6 +6,7 @@ from app.services.classification.base import BaseClassifier, ClassificationResul
 from app.services.classification.rule_based import RuleBasedClassifier
 from app.services.classification.llm_classifier import LLMClassifier
 from app.services.classification.claude_classifier import ClaudeClassifier
+from app.services.classification.deepseek_classifier import DeepSeekClassifier
 from app.services.classification.ml_classifier import MLClassifier
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "RuleBasedClassifier",
     "LLMClassifier",
     "ClaudeClassifier",
+    "DeepSeekClassifier",
     "HybridClassifier",
     "get_classifier",
 ]
@@ -68,6 +70,18 @@ def get_classifier() -> BaseClassifier:
         fallback_classifier=rule_classifier,
     )
 
+    deepseek_key_str = (
+        settings.deepseek_api_key.get_secret_value()
+        if settings.deepseek_api_key
+        else None
+    )
+
+    deepseek_classifier = DeepSeekClassifier(
+        api_key=deepseek_key_str,
+        model=settings.deepseek_model,
+        fallback_classifier=rule_classifier,
+    )
+
     claude_key_str = (
         settings.anthropic_api_key.get_secret_value()
         if settings.anthropic_api_key
@@ -76,7 +90,7 @@ def get_classifier() -> BaseClassifier:
 
     claude_classifier = ClaudeClassifier(
         api_key=claude_key_str,
-        fallback_classifier=None,  # Pure Claude AI without custom model
+        fallback_classifier=rule_classifier,  # Seamless fallback to rule-based engine on any API or parsing hiccup
     )
 
     openai_key_str = (
@@ -90,20 +104,24 @@ def get_classifier() -> BaseClassifier:
         fallback_classifier=ml_classifier,
     )
 
-    # 1. Direct Claude Mode (Anthropic)
+    # 1. Direct DeepSeek Mode (Flagship V3 / Flash)
+    if settings.classifier_type in ("deepseek", "deepseek-chat"):
+        return deepseek_classifier
+
+    # 2. Direct Claude Mode (Anthropic)
     if settings.classifier_type in ("claude", "anthropic"):
         return claude_classifier
 
-    # 2. Direct OpenAI Mode
+    # 3. Direct OpenAI Mode
     if settings.classifier_type in ("llm", "openai"):
         return llm_classifier
 
-    # 3. Hybrid Mode: Fast Local ML + Claude/OpenAI for ambiguous cases
+    # 4. Hybrid Mode: Fast Local Rule-Based + DeepSeek/Claude/OpenAI for ambiguous cases
     if settings.classifier_type == "hybrid":
-        ai_provider = claude_classifier if claude_key_str else llm_classifier
-        has_ai_key = bool(claude_key_str or openai_key_str)
+        ai_provider = deepseek_classifier if deepseek_key_str else (claude_classifier if claude_key_str else llm_classifier)
+        has_ai_key = bool(deepseek_key_str or claude_key_str or openai_key_str)
         return HybridClassifier(
-            base_classifier=ml_classifier,
+            base_classifier=rule_classifier,
             ai_classifier=ai_provider,
             enable_ai=has_ai_key,
             threshold=settings.classifier_confidence_threshold,

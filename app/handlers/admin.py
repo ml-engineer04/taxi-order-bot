@@ -1,5 +1,6 @@
 """Admin Commands and Driver Subscription Management Router."""
 
+import html
 import logging
 from typing import Optional
 from aiogram import Router, types, F
@@ -81,18 +82,19 @@ async def handle_start(message: types.Message) -> None:
                 "<i>VIP guruhda barcha yangi yo'lovchi buyurtmalarini kuzatib boring!</i>"
             )
         else:
+            admin_user = (settings.admin_username or "rahmonjon_qosimov").lstrip("@").strip()
             text = (
-                f"👋 <b>Assalomu alaykum, {user.full_name}!</b>\n\n"
+                f"👋 <b>Assalomu alaykum, {html.escape(user.full_name or 'Haydovchi')}!</b>\n\n"
                 "🚖 <b>Viloyatlararo Taksi Haydovchilari Xizmati Botiga xush kelibsiz!</b>\n\n"
                 "Ushbu bot umumiy guruhlardagi yo'lovchi buyurtmalarini saralab, "
                 "faqat tasdiqlangan haydovchilar guruhiga yetkazadi.\n\n"
                 "🔒 <b>Yopiq VIP guruhga qo'shilish va obunani faollashtirish uchun "
                 "admin bilan bog'laning:</b>\n"
-                f"👉 @{settings.admin_username}\n\n"
+                f"👉 @{admin_user}\n\n"
                 f"🆔 <b>Sizning Telegram ID raqamingiz:</b> <code>{user.id}</code>\n"
                 "<i>(To'lov qilgach, ushbu ID raqamingizni adminga yuboring).</i>"
             )
-            builder.button(text="💬 Admin bilan bog'lanish", url=f"https://t.me/{settings.admin_username}")
+            builder.button(text="💬 Admin bilan bog'lanish", url=f"https://t.me/{admin_user}")
 
         await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
@@ -478,11 +480,12 @@ async def handle_help(message: types.Message) -> None:
             "• <code>/revoke &lt;tg_id&gt;</code>\n"
         )
     else:
+        admin_user = (settings.admin_username or "rahmonjon_qosimov").lstrip("@").strip()
         text = (
             "📖 <b>Foydalanuvchi Yo'riqnomasi:</b>\n\n"
             "Ushbu bot orqali viloyatlararo qatnovchi yo'lovchilarning buyurtmalari saralanadi.\n\n"
             "<b>Qanday qilib buyurtmalarni olish mumkin?</b>\n"
-            f"1. Admin bilan bog'laning: @{settings.admin_username}\n"
+            f"1. Admin bilan bog'laning: @{admin_user}\n"
             f"2. O'z ID raqamingizni (<code>{user.id if user else ''}</code>) adminga taqdim eting.\n"
             "3. Oylik to'lovni amalga oshiring.\n"
             "4. Admin yuborgan maxsus havola orqali VIP guruhga qo'shiling!"

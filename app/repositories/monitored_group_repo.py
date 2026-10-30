@@ -71,6 +71,14 @@ class MonitoredGroupRepository:
         return record
 
     @classmethod
+    async def get_by_chat_id(cls, session: AsyncSession, chat_id: int) -> Optional[MonitoredGroupRecord]:
+        """Fetch a monitored group record by chat ID (handling id variants)."""
+        variants = cls._get_chat_id_variants(chat_id)
+        query = select(MonitoredGroupRecord).where(MonitoredGroupRecord.chat_id.in_(variants))
+        result = await session.execute(query)
+        return result.scalars().first()
+
+    @classmethod
     async def deactivate_group(cls, session: AsyncSession, chat_id: int) -> bool:
         """Mark a monitored group as inactive by chat ID."""
         variants = cls._get_chat_id_variants(chat_id)

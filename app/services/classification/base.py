@@ -30,6 +30,10 @@ class ClassificationResult(BaseModel):
         default=None,
         description="Detected number of passengers or requested seats",
     )
+    order_type: Optional[str] = Field(
+        default="passenger",
+        description="Type of order: 'passenger' (yo'lovchi) or 'cargo' (pochta/yuk)",
+    )
     time: Optional[str] = Field(
         default=None,
         description="Detected departure time if mentioned (e.g. 'Hozir', 'Kechga', 'Soat 5da')",

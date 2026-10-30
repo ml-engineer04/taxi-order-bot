@@ -6,7 +6,7 @@ UZBEK_CITIES = {
     "toshkent", "tashkent", "chirchiq", "olmaliq", "angren", "bekobod", "yangiyo'l", "yangiyol",
     "parkent", "piskent", "buka", "bo'ka", "chinoz", "qibray", "zangiota",
     "bo'stonliq", "bostonliq", "chig'atoy", "chigatoy", "qo'yliq", "qoyliq", "sergeli", "chilonzor", "yunusobod",
-    "aeroport", "vokzal", "markaz",
+    "aeroport", "vokzal", "markaz", "shtab", "skver",
 
     # Samarkand
     "samarqand", "samarkand", "kattaqo'rg'on", "kattaqorgon", "urgut", "bulung'ur", "bulungur",

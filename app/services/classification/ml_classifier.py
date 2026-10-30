@@ -128,10 +128,12 @@ class MLClassifier(BaseClassifier):
 
         # Extract locations and seats using rule-based stem matching
         from app.services.normalization.transliterator import normalize_uzbek_text
+        from app.services.classification.rule_based import detect_order_type
 
         norm = normalize_uzbek_text(raw_text)
         origin, destination = self._rule_extractor._extract_locations(norm)
         seats = self._rule_extractor._extract_seats(norm)
+        detected_order_type = detect_order_type(norm)
 
         origin_str = origin.capitalize() if origin else None
         destination_str = destination.capitalize() if destination else None
@@ -145,6 +147,7 @@ class MLClassifier(BaseClassifier):
             )
             return ClassificationResult(
                 is_passenger_request=is_forwardable,
+                order_type=detected_order_type,
                 confidence=confidence,
                 origin=origin_str,
                 destination=destination_str,

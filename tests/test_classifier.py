@@ -71,8 +71,41 @@ async def test_driver_slang_rejection():
         "Qo'qonga bitta kam shoshilinch",
         "Andijonga 3 ta joy bor yuramiz",
         "Odam olamiz Toshkentga salon bosh",
+        "Тошкент шахар ичидан риштон богдотга 2 та одам зарул пошта оламан тел +998931579092",
+        "Toshkentdan Rishtonga 2 ta odam zarul poshta olaman",
+        "2 ta odam zarur toshkentga",
+        "poshta olamiz bugun kechga",
+        """ТОШКЕНДАН ЮРАМИЗ
+РИШТОН - БОГДОД
+БУВАЙДА ГА.   
+2 ta ОДАМ  ПОЧТА. ОЛАМИЗ. 
+ТОМ. БАГАЖ. БОР.
+🏎 АВТО  Коблт
+☎️ TEЛ:  +998943971716""",
+        """Toshkentdan шахар ичидан    
+            Rishtonga.      Bogʻdotga yuramiz 
+          2та 
+odam.кам   pochta xizmatixam 
+bor avto kobilt   ayollar bor
++998975557227""",
     ]
 
     for msg in driver_messages:
         res = await classifier.classify(msg)
         assert res.is_passenger_request is False, f"Expected False for driver message: {msg}"
+
+
+@pytest.mark.asyncio
+async def test_cargo_request_detection():
+    """Verify that cargo/pochta customer delivery requests are classified as forwardable orders."""
+    cargo_requests = [
+        "Toshkentdan Fargonaga pochta bor berib yuborish kerak",
+        "Samarqandga poshta bor olib ketadigan bormi",
+        "Andijondan Toshkentga 1 ta korobka yuk bor taksi bormi",
+        "Buxoroga pochta bor srochni",
+    ]
+
+    for msg in cargo_requests:
+        res = await classifier.classify(msg)
+        assert res.is_passenger_request is True, f"Expected True for cargo order: {msg}"
+        assert res.order_type == "cargo", f"Expected cargo order_type for: {msg}"

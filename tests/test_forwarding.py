@@ -80,13 +80,15 @@ def test_build_passenger_card():
     assert "Ali" in card_text
 
     buttons = reply_markup.inline_keyboard
-    assert len(buttons) == 1
+    assert len(buttons) == 2
     assert "https://t.me/ali_valiyev" in buttons[0][0].url
     assert "💬 Yo'lovchiga yozish" == buttons[0][0].text
+    assert "📍 Guruhdagi xabarga o'tish" == buttons[1][0].text
+    assert "https://t.me/c/3726192046/45" in buttons[1][0].url
 
 
 def test_build_passenger_card_without_username():
-    """Verify card generated for user without username has direct tg://user?id profile link and no keyboard."""
+    """Verify card generated for user without username has direct tg://user?id profile link and group message button."""
     settings = Settings(
         BOT_TOKEN="123456:fake_token",
         ADMIN_USER_IDS="111",
@@ -123,8 +125,56 @@ def test_build_passenger_card_without_username():
     assert 'M-CBDE' in card_text
     assert '+998901234567' in card_text
 
-    # For users without username, no button is attached since group link was removed
-    assert reply_markup is None
+    # For users without username, group message link button is attached
+    assert reply_markup is not None
+    buttons = reply_markup.inline_keyboard
+    assert len(buttons) == 1
+    assert "📍 Guruhdagi xabarga o'tish" == buttons[0][0].text
+    assert "https://t.me/c/3726192046/50" in buttons[0][0].url
+
+
+def test_build_cargo_card():
+    """Verify card generated for cargo / parcel customer request."""
+    settings = Settings(
+        BOT_TOKEN="123456:fake_token",
+        ADMIN_USER_IDS="111",
+        PRIVATE_GROUP_ID=-1004465107293,
+    )
+    forwarder = ForwardingService(bot=None, settings=settings)
+
+    chat = types.Chat(id=-1003726192046, type="supergroup")
+    user = types.User(id=999, is_bot=False, first_name="Nodir", username="nodir_pochta")
+    msg = types.Message(
+        message_id=60,
+        date=1700000000,
+        chat=chat,
+        from_user=user,
+        text="Toshkentdan Fargonaga pochta bor berib yuborish kerak +998901234567",
+    )
+
+    result = ClassificationResult(
+        is_passenger_request=True,
+        confidence=0.95,
+        origin="Toshkent",
+        destination="Fargona",
+        order_type="cargo",
+        reason="Pochta request",
+        method="rule_based",
+    )
+
+    card_text, reply_markup = forwarder.build_passenger_card(msg, result)
+
+    assert "YANGI POCHTA / YUK" in card_text
+    assert "Toshkent → Fargona" in card_text
+    assert "Buyurtmachi:" in card_text
+    assert "Pochta / Yuk" in card_text
+    assert "+998901234567" in card_text
+    buttons = reply_markup.inline_keyboard
+    assert len(buttons) == 2
+    assert "💬 Buyurtmachiga yozish" == buttons[0][0].text
+    assert "https://t.me/nodir_pochta" in buttons[0][0].url
+    assert "📍 Guruhdagi xabarga o'tish" == buttons[1][0].text
+    assert "https://t.me/c/3726192046/60" in buttons[1][0].url
 
 
 @pytest.mark.asyncio
@@ -158,3 +208,87 @@ async def test_telegram_api_error_handling():
     # Should return False on API error, not crash
     success = await forwarder.forward_passenger_request(msg, result)
     assert success is False
+
+
+@pytest.mark.asyncio
+async def test_forward_voice_dispatches_both_audio_and_card():
+    """Verify that voice passenger requests forward the voice message AND also send the structured card."""
+    mock_bot = AsyncMock()
+    settings = Settings(
+        BOT_TOKEN="123456:fake",
+        PRIVATE_GROUP_ID=-1004465107293,
+    )
+    forwarder = ForwardingService(bot=mock_bot, settings=settings)
+
+    chat = types.Chat(id=-1003726192046, type="supergroup")
+    msg = types.Message(
+        message_id=123,
+        date=1700000000,
+        chat=chat,
+        from_user=types.User(id=987, is_bot=False, first_name="VoiceUser"),
+        text=None,
+    )
+    result = ClassificationResult(
+        is_passenger_request=True,
+        confidence=0.95,
+        destination="Toshkent",
+        order_type="passenger",
+    )
+
+    success = await forwarder.forward_passenger_request(
+        message=msg,
+        classification=result,
+        is_voice=True,
+        raw_text="Toshkentga bitta ayol kishi bor",
+        voice_bytes=b"fake_audio_bytes",
+    )
+
+    assert success is True
+    # 1. Voice audio forwarded/sent
+    assert mock_bot.forward_message.called or mock_bot.send_voice.called
+    # 2. Card ALSO sent
+    assert mock_bot.send_message.called
+    sent_text = mock_bot.send_message.call_args[1]["text"]
+    assert "Toshkent" in sent_text
+    assert "Ovozli xabar" in sent_text
+
+
+@pytest.mark.asyncio
+async def test_forward_custom_voice_userbot_dispatches_both():
+    """Verify that Userbot captured voice requests forward audio AND send card."""
+    mock_bot = AsyncMock()
+    mock_userbot_client = AsyncMock()
+    settings = Settings(
+        BOT_TOKEN="123456:fake",
+        PRIVATE_GROUP_ID=-1004465107293,
+    )
+    forwarder = ForwardingService(bot=mock_bot, settings=settings)
+
+    result = ClassificationResult(
+        is_passenger_request=True,
+        confidence=0.92,
+        destination="Rishton",
+        order_type="passenger",
+    )
+
+    success = await forwarder.forward_custom_passenger_request(
+        chat_id=-100111222,
+        message_id=555,
+        user_id=777,
+        raw_text="Rishtonga 2 kishi bor",
+        classification=result,
+        passenger_name="Ovozli Buyurtmachi",
+        is_voice=True,
+        voice_bytes=b"ogg_voice_data",
+        userbot_client=mock_userbot_client,
+        telethon_message=AsyncMock(),
+    )
+
+    assert success is True
+    # 1. Audio forwarded via userbot or bot
+    assert mock_userbot_client.forward_messages.called or mock_bot.forward_message.called or mock_bot.send_voice.called
+    # 2. Card ALSO sent via bot
+    assert mock_bot.send_message.called
+    sent_text = mock_bot.send_message.call_args[1]["text"]
+    assert "Rishton" in sent_text
+    assert "Ovozli xabar" in sent_text

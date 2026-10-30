@@ -83,19 +83,55 @@ async def handle_public_group_message(message: types.Message) -> None:
             return
 
     # 3. Ignore commands (e.g. /id, /start) as they are handled by admin_router
+    current_settings = get_settings()
     raw_text = extract_message_text(message)
-    if not raw_text or raw_text.startswith("/"):
+    is_voice = False
+    voice_bytes = None
+
+    if not raw_text and message.voice and current_settings.voice_transcription_enabled:
+        from app.services.voice_service import VoiceTranscriptionService
+        groq_k = current_settings.groq_api_key.get_secret_value() if current_settings.groq_api_key else None
+        openai_k = current_settings.openai_api_key.get_secret_value() if current_settings.openai_api_key else None
+        voice_service = VoiceTranscriptionService(
+            groq_api_key=groq_k,
+            openai_api_key=openai_k,
+            enabled=current_settings.voice_transcription_enabled,
+        )
+        try:
+            import io
+            file = await message.bot.get_file(message.voice.file_id)
+            buf = io.BytesIO()
+            await message.bot.download_file(file.file_path, destination=buf)
+            voice_bytes = buf.getvalue()
+            transcribed = await voice_service.transcribe(voice_bytes, filename="voice.ogg")
+            if transcribed:
+                raw_text = transcribed.strip()
+                is_voice = True
+                logger.info(
+                    "🎙️ [BOT VOICE TRANSCRIBED] User %s in '%s': '%s'",
+                    user.id,
+                    message.chat.id,
+                    raw_text,
+                )
+        except Exception as dl_err:
+            logger.debug("Failed to download or transcribe bot voice message: %s", dl_err)
+
+    if not raw_text or raw_text.startswith("/") or len(raw_text) < 4:
         return
 
     chat_id = message.chat.id
-    current_settings = get_settings()
 
-    # 5. Only monitor messages from configured or dynamically added PUBLIC_GROUP_ID(s)
+    # Strictly ignore private VIP group itself
+    if chat_id == current_settings.private_group_id or str(chat_id) == str(current_settings.private_group_id):
+        return
+
+    # 5. Only filter messages if a specific PUBLIC_GROUP_ID is configured in settings
     from app.services.group_manager import get_group_manager
     group_mgr = get_group_manager(current_settings)
-    if not group_mgr.is_monitored(chat_id) and not current_settings.is_monitored_public_group(chat_id):
-        logger.debug("Ignored message from unmonitored group ID: %s", chat_id)
-        return
+    if current_settings.public_group_id and current_settings.public_group_id != 0:
+        if not group_mgr.is_monitored(chat_id) and not current_settings.is_monitored_public_group(chat_id):
+            logger.debug("Ignored message from unmonitored group ID: %s", chat_id)
+            return
 
     # 4. Classify passenger transportation intent
     try:
@@ -126,7 +162,13 @@ async def handle_public_group_message(message: types.Message) -> None:
         # 5. Dispatch to VIP drivers' private group
         try:
             forwarder = get_forwarding_service(message.bot)
-            await forwarder.forward_passenger_request(message, result)
+            await forwarder.forward_passenger_request(
+                message=message,
+                classification=result,
+                is_voice=is_voice,
+                raw_text=raw_text,
+                voice_bytes=voice_bytes,
+            )
         except Exception as exc:
             logger.error("Failed to forward passenger request: %s", exc)
 

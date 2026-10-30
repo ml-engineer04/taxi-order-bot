@@ -3,7 +3,7 @@
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Optional, Set
+from typing import Any, Optional, Set
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
@@ -27,6 +27,10 @@ logger = logging.getLogger(__name__)
 
 def is_chat_monitored(chat_id: int, settings: Settings, extra_monitored_ids: Optional[Set[int]] = None) -> bool:
     """Check if chat_id matches monitored group IDs, tolerating -100 prefix variances."""
+    # Strictly ignore private VIP group itself to avoid forwarding loops
+    if chat_id == settings.private_group_id or str(chat_id) == str(settings.private_group_id):
+        return False
+
     monitored_set: Set[int] = set()
 
     if extra_monitored_ids:
@@ -41,8 +45,9 @@ def is_chat_monitored(chat_id: int, settings: Settings, extra_monitored_ids: Opt
     if group_mgr._active_ids:
         monitored_set.update(group_mgr._active_ids)
 
-    if not monitored_set and not settings.public_group_id:
-        # If no public targets specified, monitor all groups user is in
+    # When NO groups are configured anywhere (neither in DB, settings, nor extra IDs),
+    # userbot monitors all groups it has joined (bootstrap mode)
+    if not monitored_set:
         return True
 
     if chat_id in monitored_set:
@@ -168,10 +173,21 @@ def setup_userbot_listener(
     classifier: BaseClassifier,
     forwarder: ForwardingService,
     monitored_ids: Optional[Set[int]] = None,
+    voice_service: Optional[Any] = None,
 ) -> None:
     """Register NewMessage event handler on the Telethon client."""
     listener_started_at = datetime.now(timezone.utc)
     active_monitored_ids = monitored_ids or set()
+
+    if voice_service is None:
+        from app.services.voice_service import VoiceTranscriptionService
+        groq_k = settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
+        openai_k = settings.openai_api_key.get_secret_value() if settings.openai_api_key else None
+        voice_service = VoiceTranscriptionService(
+            groq_api_key=groq_k,
+            openai_api_key=openai_k,
+            enabled=settings.voice_transcription_enabled,
+        )
 
     logger.info(
         "Userbot message listener registered. Strictly ignoring historical backlog (started at: %s).",
@@ -212,6 +228,27 @@ def setup_userbot_listener(
             return
 
         raw_text = (event.raw_text or "").strip()
+        is_voice = False
+        voice_bytes = None
+        if not raw_text and voice_service and getattr(voice_service, "enabled", True):
+            if event.voice or (event.audio and getattr(event.audio, "voice", False)):
+                try:
+                    audio_bytes = await event.download_media(file=bytes)
+                    if audio_bytes:
+                        voice_bytes = audio_bytes
+                        transcribed = await voice_service.transcribe(audio_bytes, filename="voice.ogg")
+                        if transcribed:
+                            raw_text = transcribed.strip()
+                            is_voice = True
+                            logger.info(
+                                "🎙️ [USERBOT VOICE TRANSCRIBED] User %s in '%s': '%s'",
+                                event.sender_id,
+                                event.chat_id,
+                                raw_text,
+                            )
+                except Exception as dl_err:
+                    logger.debug("Failed to download or transcribe userbot voice message %s: %s", event.id, dl_err)
+
         if not raw_text or raw_text.startswith("/") or len(raw_text) < 4:
             return
 
@@ -242,15 +279,6 @@ def setup_userbot_listener(
             # 7. Classify passenger transport intent
             result = await classifier.classify(raw_text)
 
-            # Strict Guard: A genuine passenger request MUST specify origin or destination!
-            # Random chatter, questions, or gibberish without a route are never passenger requests.
-            if result.is_passenger_request and not (result.destination or result.origin):
-                logger.info(
-                    "⏭️ [USERBOT SKIPPED] Passenger flag ignored: No origin/destination in '%s'",
-                    raw_text,
-                )
-                result.is_passenger_request = False
-
             sanitized_sender_name = clean_display_name(sender_name)
             user_display = f"@{sender_username}" if sender_username else f"{sanitized_sender_name} ({sender_id})"
 
@@ -276,6 +304,10 @@ def setup_userbot_listener(
                     passenger_name=sanitized_sender_name,
                     passenger_username=sender_username,
                     chat_username=chat_username,
+                    is_voice=is_voice,
+                    voice_bytes=voice_bytes,
+                    userbot_client=client,
+                    telethon_message=event.message,
                 )
             else:
                 # Active learning collection for ambiguous messages

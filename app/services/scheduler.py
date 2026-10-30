@@ -79,12 +79,13 @@ class ExpirationScheduler:
                         logger.warning("Could not send expiration alert to admin %s: %s", admin_id, exc)
 
                 # 4. Notify driver in private message
+                admin_user = (self.settings.admin_username or "rahmonjon_qosimov").lstrip("@").strip()
                 driver_alert = (
                     f"⚠️ <b>Hurmatli {driver_name}!</b>\n\n"
                     "Sizning VIP haydovchilar guruhidagi oylik obuna muddatingiz tugadi "
                     "va guruhdan avtomatik chiqarildingiz.\n\n"
                     "🔄 <b>Obunani qayta faollashtirish va yangi buyurtmalarni qabul qilish uchun admin bilan bog'laning:</b>\n"
-                    f"👉 @{self.settings.admin_username}\n\n"
+                    f"👉 @{admin_user}\n\n"
                     f"🆔 Sizning ID raqamingiz: <code>{tg_id}</code>"
                 )
                 try:
