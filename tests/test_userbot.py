@@ -7,7 +7,7 @@ from app.config import Settings
 from app.services.classification.base import ClassificationResult
 from app.services.forwarding import DeduplicationCache, ForwardingService
 from app.userbot.client import create_userbot_client
-from app.userbot.listener import is_chat_monitored, setup_userbot_listener
+from app.userbot.listener import auto_join_and_resolve_targets, extract_telethon_username, is_chat_monitored, setup_userbot_listener
 
 
 def test_is_chat_monitored():
@@ -311,4 +311,33 @@ async def test_auto_join_and_resolve_targets():
     assert -1003726192046 in resolved
     assert 3726192046 in resolved
     assert 1122334455 in resolved
+
+
+def test_extract_telethon_username():
+    """Verify legacy .username and Layer 148+ .usernames extraction."""
+    # None entity
+    assert extract_telethon_username(None) is None
+
+    # Legacy .username
+    legacy_user = MagicMock()
+    legacy_user.username = "Miss_lawprincess"
+    legacy_user.usernames = None
+    assert extract_telethon_username(legacy_user) == "Miss_lawprincess"
+
+    # With leading @
+    legacy_user.username = "@Miss_lawprincess"
+    assert extract_telethon_username(legacy_user) == "Miss_lawprincess"
+
+    # Modern Layer 148+ .usernames list (Fragment / Collectibles)
+    modern_user = MagicMock()
+    modern_user.username = None
+    u1 = MagicMock(username="secondary_alias", active=False)
+    u2 = MagicMock(username="Miss_lawprincess", active=True)
+    modern_user.usernames = [u1, u2]
+    assert extract_telethon_username(modern_user) == "Miss_lawprincess"
+
+    # Empty user
+    empty_user = MagicMock(username=None, usernames=[])
+    assert extract_telethon_username(empty_user) is None
+
 

@@ -25,6 +25,31 @@ from app.services.forwarding import ForwardingService, clean_display_name
 logger = logging.getLogger(__name__)
 
 
+def extract_telethon_username(entity: Any) -> Optional[str]:
+    """
+    Safely extract username from a Telethon entity (User, Channel, Chat).
+    Supports legacy .username and modern Telegram Layer 148+ .usernames list.
+    """
+    if not entity:
+        return None
+
+    # 1. Primary legacy username attribute
+    username = getattr(entity, "username", None)
+    if username:
+        return str(username).lstrip("@").strip()
+
+    # 2. Modern Layer 148+ usernames list (Fragment / Collectibles / Multiple usernames)
+    usernames = getattr(entity, "usernames", None)
+    if usernames:
+        for u in usernames:
+            if getattr(u, "active", True):
+                uname = getattr(u, "username", None)
+                if uname:
+                    return str(uname).lstrip("@").strip()
+
+    return None
+
+
 def is_chat_monitored(chat_id: int, settings: Settings, extra_monitored_ids: Optional[Set[int]] = None) -> bool:
     """Check if chat_id matches monitored group IDs, tolerating -100 prefix variances."""
     # Strictly ignore private VIP group itself to avoid forwarding loops
@@ -269,7 +294,30 @@ def setup_userbot_listener(
                 full = f"{first} {last}".strip()
                 if full:
                     sender_name = full
-                sender_username = getattr(sender, "username", None)
+                sender_username = extract_telethon_username(sender)
+
+            # Fallback 1: If username was not cached on event.sender, fetch full user entity via client
+            if not sender_username and sender_id and sender_id > 0 and client:
+                try:
+                    full_entity = await client.get_entity(sender_id)
+                    if full_entity:
+                        sender_username = extract_telethon_username(full_entity)
+                        if not sender_name or sender_name == "Yo'lovchi":
+                            first = getattr(full_entity, "first_name", "") or ""
+                            last = getattr(full_entity, "last_name", "") or ""
+                            full = f"{first} {last}".strip()
+                            if full:
+                                sender_name = full
+                except Exception as ent_err:
+                    logger.debug("Could not fetch full entity for sender %s: %s", sender_id, ent_err)
+
+            # Fallback 2: Check if message text mentions a username (e.g. @Miss_lawprincess)
+            if not sender_username and raw_text:
+                uname_match = re.search(r"@([a-zA-Z0-9_]{4,32})", raw_text)
+                if uname_match:
+                    candidate = uname_match.group(1)
+                    if not candidate.lower().endswith("bot"):
+                        sender_username = candidate
 
             # 6. Retrieve chat details
             chat = await event.get_chat()
