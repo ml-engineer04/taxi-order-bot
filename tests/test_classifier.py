@@ -109,3 +109,19 @@ async def test_cargo_request_detection():
         res = await classifier.classify(msg)
         assert res.is_passenger_request is True, f"Expected True for cargo order: {msg}"
         assert res.order_type == "cargo", f"Expected cargo order_type for: {msg}"
+
+
+@pytest.mark.asyncio
+async def test_lost_items_and_documents_rejected():
+    """Verify that lost items, documents, and rewards announcements are rejected."""
+    lost_item_messages = [
+        "‼️‼️‼️ Андижондан мехмон булиб келган Багдод Янгикургон Кукон шахрида булган Инобиддинов Абдулходий Иброхимович тегишли права йукотиб куйилган топганга суюнчиси бор +998943802681",
+        "Toshkent Samarqand trassasida pasport tushib qolgan topganga suyunchi beriladi",
+        "Qo'qonda qora sumka yo'qotib qo'yilgan ichida hujjatlar bor edi iltimos topganlar qaytarsin",
+        "Toshkentdan Namanganga ketayotganda mashinada kalit qolib ketgan",
+        "Prava topib olindi Alimov Shuxrat nomiga",
+    ]
+
+    for msg in lost_item_messages:
+        res = await classifier.classify(msg)
+        assert res.is_passenger_request is False, f"Expected False for lost item message: {msg}"

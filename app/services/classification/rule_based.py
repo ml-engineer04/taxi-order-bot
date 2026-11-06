@@ -105,6 +105,14 @@ STRICT_NON_TRANSPORT_PATTERNS = [
     re.compile(r"\b(zaryadka|zaryadchik|remont|tamiri|ta'miri|zapchast|ekran|shina|balon|diska|moy\s+almashtirish)\b", re.IGNORECASE),
     re.compile(r"\b(telefon|iphone|ayfon|samsung|redmi|honor|noutbuk|kompyuter)\s+(sotiladi|sotaman|olaman|kerak|bor)\b", re.IGNORECASE),
     re.compile(r"\b(sotiladi|sotaman)\s+(telefon|iphone|ayfon|samsung|redmi|honor|noutbuk|mashina|uy|kvartira)\b", re.IGNORECASE),
+    # Lost & Found / Lost Documents / Finder's Fee ('prava yo'qotilgan', 'topganga suyunchi', 'pasport yo'qolgan')
+    re.compile(r"\b(prava|pasport|passport|metrka|guvohnoma|texpasport|diplom|hujjat|hujjatlar|sumka|hamyon|kashalyok|kashlok|kalit|nomer)\b.*?\b(yo['`]?qot\w*|yukot\w*|yo['`]?qol\w*|yukol\w*|tushib\s+qol\w*|tushib\s+kuy\w*|qolib\s+ket\w*|topib\s+ol\w*|topildi)\b", re.IGNORECASE | re.DOTALL),
+    re.compile(r"\b(yo['`]?qot\w*|yukot\w*|yo['`]?qol\w*|yukol\w*|tushib\s+qol\w*|qolib\s+ket\w*|topib\s+ol\w*)\b.*?\b(prava|pasport|passport|metrka|guvohnoma|texpasport|diplom|hujjat|sumka|hamyon|kalit|nomer|telefon|buyum)\b", re.IGNORECASE | re.DOTALL),
+    re.compile(r"\b(yo['`]?qotib\s+qo['`]?yilgan|yukotib\s+kuyilgan|yo['`]?qolib\s+qolgan|yukolib\s+kolgan)\b", re.IGNORECASE),
+    re.compile(r"\b(suyunchi|suyunchisi|suyunchisi\s+bor|suyunchi\s+beriladi|suyunchi\s+beramiz|suyunchisi\s+beriladi)\b", re.IGNORECASE),
+    re.compile(r"\b(topganga\s+suyunchi|topganga\s+mukofot|topganga\s+xizmat|topib\s+olganlar\s+bo['`]?lsa|topib\s+olganga)\b", re.IGNORECASE),
+    re.compile(r"\b(qidirilmoqda|qidirilyapti|yo['`]?qolganligi\s+sababli|yukolganligi\s+sababli)\b", re.IGNORECASE),
+    re.compile(r"\b(iltimos\s+qaytarib\s+bering|ko['`]?rganlar\s+bo['`]?lsa|kurganlar\s+bulsa)\b", re.IGNORECASE),
 ]
 
 def check_non_transport_patterns(norm: str) -> Optional[str]:

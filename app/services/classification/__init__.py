@@ -52,15 +52,15 @@ class HybridClassifier(BaseClassifier):
 
         # Check conditions where AI semantic reasoning should be consulted:
         # 1. Score falls in the ambiguous evaluation zone (0.35 <= conf < threshold)
-        # 2. Local ML flagged as PASSENGER_REQUEST, but failed to extract route (origin/destination)
+        # 2. Local ML flagged as PASSENGER_REQUEST, but route is incomplete (missing either origin or destination)
         is_ambiguous_confidence = 0.35 <= result.confidence < self.threshold
-        is_missing_route = result.is_passenger_request and not (result.origin or result.destination)
+        is_incomplete_route = result.is_passenger_request and not (result.origin and result.destination)
 
-        if is_ambiguous_confidence or is_missing_route:
+        if is_ambiguous_confidence or is_incomplete_route:
             logger.info(
-                "🤖 [HYBRID AI FALLBACK] Base ML score ambiguous (conf: %.2f, missing_route: %s). Querying AI...",
+                "🤖 [HYBRID AI FALLBACK] Base ML score ambiguous (conf: %.2f, incomplete_route: %s). Querying AI...",
                 result.confidence,
-                is_missing_route,
+                is_incomplete_route,
             )
             try:
                 ai_res = await self.ai_classifier.classify(raw_text)

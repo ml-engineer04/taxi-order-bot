@@ -138,6 +138,41 @@ async def test_hybrid_delegates_on_missing_route():
 
 
 @pytest.mark.asyncio
+async def test_hybrid_delegates_on_incomplete_single_city_route():
+    """Verify that passenger request with only one city (destination missing) delegates to AI."""
+    base_mock = AsyncMock()
+    base_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=True,
+        confidence=0.92,
+        origin="Andijon",
+        destination=None,
+        reason="ML high score but incomplete route",
+        method="ml",
+    )
+
+    ai_mock = AsyncMock()
+    ai_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=False,
+        confidence=0.20,
+        reason="Lost document announcement",
+        method="deepseek",
+    )
+
+    hybrid = HybridClassifier(
+        base_classifier=base_mock,
+        ai_classifier=ai_mock,
+        enable_ai=True,
+        threshold=0.85,
+    )
+
+    res = await hybrid.classify("Andijondan mexmon kelgan prava yoqotilgan")
+    assert res.is_passenger_request is False
+    assert res.confidence == 0.20
+    assert res.method == "deepseek"
+    ai_mock.classify.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_hybrid_graceful_fallback_on_ai_exception():
     """Verify that when AI raises an exception, the local ML result is safely returned."""
     base_mock = AsyncMock()
