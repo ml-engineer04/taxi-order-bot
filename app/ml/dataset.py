@@ -42,6 +42,9 @@ def load_dataset(csv_path: str) -> List[Dict[str, str]]:
                 logger.warning("Row %d: Empty text skipped.", idx)
                 continue
 
+            if label == "CARGO_REQUEST":
+                label = "PASSENGER_REQUEST"
+
             if label not in VALID_LABELS:
                 logger.warning("Row %d: Invalid label '%s' skipped.", idx, label)
                 continue

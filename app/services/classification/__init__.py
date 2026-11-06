@@ -1,5 +1,6 @@
 """Classification Service Package with Claude, ML, OpenAI, and Hybrid support."""
 
+import logging
 from typing import Optional
 from app.config import get_settings
 from app.services.classification.base import BaseClassifier, ClassificationResult
@@ -8,6 +9,8 @@ from app.services.classification.llm_classifier import LLMClassifier
 from app.services.classification.claude_classifier import ClaudeClassifier
 from app.services.classification.deepseek_classifier import DeepSeekClassifier
 from app.services.classification.ml_classifier import MLClassifier
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "BaseClassifier",
@@ -24,8 +27,8 @@ __all__ = [
 
 class HybridClassifier(BaseClassifier):
     """
-    Coordinates fast local classifier with AI fallback (Claude or OpenAI)
-    when confidence is in the ambiguous zone (0.35 - threshold).
+    Coordinates fast local ML classifier (~2ms) with AI fallback (DeepSeek, Claude, or OpenAI)
+    when confidence is in the ambiguous zone (0.35 - threshold) or when key entities are missing.
     """
 
     def __init__(
@@ -33,7 +36,7 @@ class HybridClassifier(BaseClassifier):
         base_classifier: BaseClassifier,
         ai_classifier: Optional[BaseClassifier] = None,
         enable_ai: bool = False,
-        threshold: float = 0.65,
+        threshold: float = 0.85,
     ):
         self.base_classifier = base_classifier
         self.ai_classifier = ai_classifier
@@ -43,15 +46,28 @@ class HybridClassifier(BaseClassifier):
     async def classify(self, raw_text: str) -> ClassificationResult:
         result = await self.base_classifier.classify(raw_text)
 
-        # If AI is disabled or not provided, return base result
+        # If AI is disabled or not provided, return base ML result
         if not self.enable_ai or not self.ai_classifier:
             return result
 
-        # Check if score falls in the ambiguous evaluation zone
-        if 0.35 <= result.confidence < self.threshold:
-            ai_res = await self.ai_classifier.classify(raw_text)
-            if ai_res.method in ("claude", "openai"):
-                return ai_res
+        # Check conditions where AI semantic reasoning should be consulted:
+        # 1. Score falls in the ambiguous evaluation zone (0.35 <= conf < threshold)
+        # 2. Local ML flagged as PASSENGER_REQUEST, but failed to extract route (origin/destination)
+        is_ambiguous_confidence = 0.35 <= result.confidence < self.threshold
+        is_missing_route = result.is_passenger_request and not (result.origin or result.destination)
+
+        if is_ambiguous_confidence or is_missing_route:
+            logger.info(
+                "🤖 [HYBRID AI FALLBACK] Base ML score ambiguous (conf: %.2f, missing_route: %s). Querying AI...",
+                result.confidence,
+                is_missing_route,
+            )
+            try:
+                ai_res = await self.ai_classifier.classify(raw_text)
+                if ai_res.method in ("deepseek", "claude", "openai", "rule_based"):
+                    return ai_res
+            except Exception as e:
+                logger.error("Hybrid AI classifier error: %s. Returning local ML result.", e)
 
         return result
 
@@ -116,12 +132,12 @@ def get_classifier() -> BaseClassifier:
     if settings.classifier_type in ("llm", "openai"):
         return llm_classifier
 
-    # 4. Hybrid Mode: Fast Local Rule-Based + DeepSeek/Claude/OpenAI for ambiguous cases
+    # 4. Hybrid Mode: Fast Local ML (~2ms) + DeepSeek/Claude/OpenAI for ambiguous cases
     if settings.classifier_type == "hybrid":
         ai_provider = deepseek_classifier if deepseek_key_str else (claude_classifier if claude_key_str else llm_classifier)
         has_ai_key = bool(deepseek_key_str or claude_key_str or openai_key_str)
         return HybridClassifier(
-            base_classifier=rule_classifier,
+            base_classifier=ml_classifier,
             ai_classifier=ai_provider,
             enable_ai=has_ai_key,
             threshold=settings.classifier_confidence_threshold,

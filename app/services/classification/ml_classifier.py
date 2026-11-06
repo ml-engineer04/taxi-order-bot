@@ -79,6 +79,35 @@ class MLClassifier(BaseClassifier):
                 },
             }
 
+        # Deterministic checks for obvious driver offers and non-transport noise
+        from app.services.normalization.transliterator import normalize_uzbek_text
+        from app.services.classification.rule_based import check_driver_patterns, check_non_transport_patterns
+
+        norm = normalize_uzbek_text(text)
+        driver_reason = check_driver_patterns(norm)
+        if driver_reason:
+            return {
+                "label": "DRIVER_OFFER",
+                "confidence": 0.98,
+                "probabilities": {
+                    "DRIVER_OFFER": 0.98,
+                    "PASSENGER_REQUEST": 0.01,
+                    "OTHER": 0.01,
+                },
+            }
+
+        non_transport_reason = check_non_transport_patterns(norm)
+        if non_transport_reason:
+            return {
+                "label": "OTHER",
+                "confidence": 0.98,
+                "probabilities": {
+                    "OTHER": 0.98,
+                    "PASSENGER_REQUEST": 0.01,
+                    "DRIVER_OFFER": 0.01,
+                },
+            }
+
         if self.pipeline is None:
             raise RuntimeError(f"ML model pipeline not loaded from '{self.model_path}'")
 
