@@ -121,7 +121,7 @@ class DeepSeekClassifier(BaseClassifier):
             "- seats: number of passengers requested as integer (null for cargo)\n"
             "- order_type: 'cargo' if parcel/cargo/pochta, 'passenger' if person/people\n"
             "- time: departure time if mentioned in message (e.g. 'Hozir', 'Kechga', 'Soat 5da') or null\n\n"
-            "Respond ONLY with a JSON object in this exact structure:\n"
+            "Respond ONLY with a JSON object in this exact structure (keep reason under 8 words):\n"
             '{"is_order": bool, "order_type": "passenger"|"cargo", "confidence": float, "origin": str|null, "destination": str|null, "seats": int|null, "time": str|null, "reason": str}'
         )
 
@@ -141,7 +141,7 @@ class DeepSeekClassifier(BaseClassifier):
                 ],
                 "response_format": {"type": "json_object"},
                 "temperature": 0.1,
-                "max_tokens": 400,
+                "max_tokens": 180,
             }
 
             async with aiohttp.ClientSession() as session:

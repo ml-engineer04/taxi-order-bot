@@ -125,3 +125,39 @@ async def test_lost_items_and_documents_rejected():
     for msg in lost_item_messages:
         res = await classifier.classify(msg)
         assert res.is_passenger_request is False, f"Expected False for lost item message: {msg}"
+
+
+@pytest.mark.asyncio
+async def test_driver_kam_slang_and_passenger_bittakam_protection():
+    """Verify driver '1 odam kam'/'kamdamiz'/'alishtir' are rejected while passenger 'kimga bittakam' is NOT rejected as driver."""
+    driver_slang = [
+        "Soat 12 larda Bogdod Rishtondan Toshkent shaxarga 1 odam kam",
+        "TOSHKENDAN QAYTISHGA 2 TA KAMDAMIZ AYOLLAR BOR",
+        "Oldi mestaga 1ta odam bor Alishtiradiganlar bormi",
+    ]
+    for msg in driver_slang:
+        res = await classifier.classify(msg)
+        assert res.is_passenger_request is False, f"Driver slang falsely accepted: {msg}"
+
+    # Passenger saying 'kimga bittakam' must NOT be blocked by check_driver_patterns
+    from app.services.classification.rule_based import check_driver_patterns
+    from app.services.normalization.transliterator import normalize_uzbek_text
+
+    passenger_msg = "Yunusabaddan bir kishi bor, ayol kishi, kimga bittakam, telefon qiling"
+    assert check_driver_patterns(normalize_uzbek_text(passenger_msg)) is None
+
+
+@pytest.mark.asyncio
+async def test_colloquial_city_aliases_and_suffixes():
+    """Verify colloquial/truncated stems and -tan/-da suffixes extract both cities accurately."""
+    res1 = await classifier.classify("Toshkendan Бешарикга 1 ta odam bor kerak")
+    assert res1.origin == "Toshkent"
+    assert res1.destination == "Beshariq"
+
+    res2 = await classifier.classify("Chilonzorda 1 ta odam bor quqonga")
+    assert res2.origin == "Chilonzor"
+    assert res2.destination == "Qo'qon"
+
+    res3 = await classifier.classify("Beshariqtan 2 ta odam bor toshkenga")
+    assert res3.origin == "Beshariq"
+    assert res3.destination == "Toshkent"

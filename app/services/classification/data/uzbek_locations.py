@@ -40,10 +40,50 @@ UZBEK_CITIES = {
     "urganch", "urgench", "xiva", "khiva", "xonqa", "shovot", "hazorasp", "gurlan", "bog'ot", "bogot", "yangiariq",
     "nukus", "qo'ng'irot", "qongirot", "beruniy", "to'rtko'l", "tortkol", "xo'jayli", "xojayli",
     "chimboy", "mang'it", "mangit", "taxtako'pir", "taxtakopir", "amudaryo",
+
+    # Additional Tashkent districts, transit markets, and Fergana/regional hubs
+    "chorsu", "toshmi", "olmazor", "alamazor", "yashnobod", "uchtepa", "yakkasaroy",
+    "mirobod", "mirabad", "bektemir", "shayxontohur", "yangihayot", "qoraqamish",
+    "farhod", "otchopar", "rohat", "roxat", "vodnik", "ttz", "fudsiti", "fud",
+    "bachqir", "rapqon", "oqqo'rg'on", "oqqorgon", "okqorgon", "yangibozor", "navbahor",
+    "chig'atoy", "chilanzor", "sergili", "sirgali", "sirg'ali", "koyluq", "quyluq",
+    "qo'yluq", "kuylyuk", "qoqon", "quqon", "kokon", "toshken", "toshkon", "samarqan",
+    "besharik", "bagdod", "bagdo", "bogdo", "uchkopri", "fargon", "andijo", "namanga",
+}
+
+# Map colloquial/truncated/typo stems to canonical display form
+CITY_ALIASES = {
+    "toshken": "toshkent",
+    "toshkon": "toshkent",
+    "samarqan": "samarqand",
+    "quqon": "qo'qon",
+    "kokon": "qo'qon",
+    "qoqon": "qo'qon",
+    "besharik": "beshariq",
+    "sergili": "sergeli",
+    "sirgali": "sergeli",
+    "sirg'ali": "sergeli",
+    "koyluq": "qo'yliq",
+    "quyluq": "qo'yliq",
+    "qo'yluq": "qo'yliq",
+    "kuylyuk": "qo'yliq",
+    "chilanzor": "chilonzor",
+    "bagdod": "bog'dod",
+    "bagdo": "bog'dod",
+    "bogdo": "bog'dod",
+    "uchkopri": "uchko'prik",
+    "mirabad": "mirobod",
+    "alamazor": "olmazor",
+    "roxat": "rohat",
+    "okqorgon": "oqqo'rg'on",
+    "oqqorgon": "oqqo'rg'on",
+    "fargon": "farg'ona",
+    "andijo": "andijon",
+    "namanga": "namangan",
 }
 
 # Suffixes indicating departure / origin ("from")
-ORIGIN_SUFFIXES = ("dan", "dan", "dagi")
+ORIGIN_SUFFIXES = ("dan", "tan", "dagi")
 
 # Suffixes indicating arrival / destination ("to")
-DESTINATION_SUFFIXES = ("ga", "ka", "qa", "gacha", "kacha", "qacha")
+DESTINATION_SUFFIXES = ("ga", "ka", "qa", "ge", "ke", "qe", "gacha", "kacha", "qacha")

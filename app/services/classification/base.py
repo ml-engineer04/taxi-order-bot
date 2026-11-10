@@ -46,6 +46,10 @@ class ClassificationResult(BaseModel):
         default="rule_based",
         description="Classification engine used ('rule_based' or 'llm')",
     )
+    predicted_label: Optional[str] = Field(
+        default=None,
+        description="Underlying multi-class label when produced by ML classifier ('PASSENGER_REQUEST', 'DRIVER_OFFER', 'OTHER')",
+    )
 
 
 class BaseClassifier(ABC):

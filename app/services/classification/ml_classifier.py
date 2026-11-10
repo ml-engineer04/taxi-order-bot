@@ -183,6 +183,7 @@ class MLClassifier(BaseClassifier):
                 seats=seats,
                 reason=reason,
                 method="ml",
+                predicted_label=label,
             )
         elif label == "DRIVER_OFFER":
             return ClassificationResult(
@@ -193,6 +194,7 @@ class MLClassifier(BaseClassifier):
                 seats=seats,
                 reason=f"ML DRIVER_OFFER (confidence: {confidence:.2f})",
                 method="ml",
+                predicted_label=label,
             )
         else:  # OTHER
             return ClassificationResult(
@@ -203,4 +205,5 @@ class MLClassifier(BaseClassifier):
                 seats=seats,
                 reason=f"ML OTHER/irrelevant (confidence: {confidence:.2f})",
                 method="ml",
+                predicted_label=label,
             )

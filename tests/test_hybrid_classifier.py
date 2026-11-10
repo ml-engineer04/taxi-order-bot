@@ -197,3 +197,134 @@ async def test_hybrid_graceful_fallback_on_ai_exception():
     assert res.is_passenger_request is False
     assert res.confidence == 0.55
     assert res.method == "ml"
+
+
+@pytest.mark.asyncio
+async def test_hybrid_ttl_cache_prevents_duplicate_ai_calls():
+    """Verify repeated identical texts hit TTL cache and do not re-call AI."""
+    base_mock = AsyncMock()
+    base_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=False,
+        confidence=0.60,
+        reason="ML OTHER/irrelevant (confidence: 0.60)",
+        method="ml",
+        predicted_label="OTHER",
+    )
+
+    ai_mock = AsyncMock()
+    ai_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=False,
+        confidence=0.20,
+        reason="Driver ad",
+        method="deepseek",
+    )
+
+    hybrid = HybridClassifier(
+        base_classifier=base_mock,
+        ai_classifier=ai_mock,
+        enable_ai=True,
+        threshold=0.85,
+    )
+
+    msg = "Toshkentdan Qaytishga 1 odam kam"
+    r1 = await hybrid.classify(msg)
+    r2 = await hybrid.classify(msg)
+    assert r1.is_passenger_request is False
+    assert r2.is_passenger_request is False
+    assert ai_mock.classify.call_count == 1
+    assert base_mock.classify.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_hybrid_timeout_preserves_high_conf_ml_order():
+    """If DeepSeek fails and delegates to non-AI fallback, keep ML result (not fallback)."""
+    base_mock = AsyncMock()
+    base_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=True,
+        confidence=0.99,
+        origin="Toshkent",
+        destination=None,
+        reason="ML PASSENGER_REQUEST (confidence: 0.99)",
+        method="ml",
+        predicted_label="PASSENGER_REQUEST",
+    )
+
+    ai_mock = AsyncMock()
+    # Simulates DeepSeek timeout falling back to a lower-confidence rule_based result
+    ai_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=False,
+        confidence=0.50,
+        reason="Rule fallback",
+        method="rule_based",
+    )
+
+    hybrid = HybridClassifier(
+        base_classifier=base_mock,
+        ai_classifier=ai_mock,
+        enable_ai=True,
+        threshold=0.85,
+    )
+
+    res = await hybrid.classify("+998979600650 Toshkentdan pochta bor")
+    assert res.is_passenger_request is True
+    assert res.confidence == 0.99
+    assert res.method == "ml"
+
+    # Transient AI failure should NOT be cached so next attempt can query AI again
+    await hybrid.classify("+998979600650 Toshkentdan pochta bor")
+    assert ai_mock.classify.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_hybrid_asymmetric_reject_thresholds():
+    """Confident OTHER (>=0.82) and DRIVER_OFFER (>=0.72) skip AI, while low-conf or below-thresh PASSENGER queries AI."""
+    ai_mock = AsyncMock()
+    ai_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=True,
+        confidence=0.90,
+        origin="Toshkent",
+        destination="Samarqand",
+        method="deepseek",
+    )
+
+    # 1. ML DRIVER_OFFER at 0.75 (>= 0.72) -> skipped AI
+    base_mock = AsyncMock()
+    base_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=False,
+        confidence=0.75,
+        reason="ML DRIVER_OFFER",
+        method="ml",
+        predicted_label="DRIVER_OFFER",
+    )
+    hybrid = HybridClassifier(base_classifier=base_mock, ai_classifier=ai_mock, enable_ai=True)
+    r = await hybrid.classify("Moshina bor Samarqandga")
+    assert r.is_passenger_request is False
+    ai_mock.classify.assert_not_called()
+
+    # 2. ML OTHER at 0.83 (>= 0.82) -> skipped AI
+    base_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=False,
+        confidence=0.83,
+        reason="ML OTHER",
+        method="ml",
+        predicted_label="OTHER",
+    )
+    r2 = await hybrid.classify("Assalomu alaykum yaxshimisizlar")
+    assert r2.is_passenger_request is False
+    ai_mock.classify.assert_not_called()
+
+    # 3. ML PASSENGER_REQUEST below threshold (0.80 < 0.85) -> queries AI
+    base_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=False,
+        confidence=0.80,
+        origin="Toshkent",
+        destination="Samarqand",
+        reason="ML PASSENGER_REQUEST below threshold",
+        method="ml",
+        predicted_label="PASSENGER_REQUEST",
+    )
+    r3 = await hybrid.classify("Samarqandga bir kishi ketmoqchi")
+    assert r3.is_passenger_request is True
+    assert r3.method == "deepseek"
+    ai_mock.classify.assert_called_once()
+

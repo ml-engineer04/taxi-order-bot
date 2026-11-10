@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 from app.services.classification.base import BaseClassifier, ClassificationResult
 from app.services.classification.data.uzbek_locations import (
     UZBEK_CITIES,
+    CITY_ALIASES,
     ORIGIN_SUFFIXES,
     DESTINATION_SUFFIXES,
 )
@@ -12,10 +13,14 @@ from app.services.normalization.transliterator import normalize_uzbek_text
 
 # Strict Negative Patterns: Definitive driver offers, vehicle capacity, or collection announcements
 STRICT_DRIVER_PATTERNS = [
-    # Uzbek taxi driver slang: "X ta kam" / "kam" / "odam kam" = driver has X seats remaining until full
+    # Uzbek taxi driver slang: "X ta kam", "1 odam kam", "kamdamiz" (avoids matching passenger "bittakam")
     re.compile(r"\b(\d+|bitta|ikkita|uchta|to'rtta|tortta)?\s*ta?\s*(odam|kishi|joy)?[\s\.\-_]*kam\b"),
-    re.compile(r"\b(\d+)\s*[\.\s]*kam\b"),
+    re.compile(r"\b(?:\d+|bitta|ikkita|uchta|to'rtta|tortta)\s+(?:ta[\s\.\-_]+)?(?:odam|kishi|joy)[\s\.\-_]+kam(?:damiz|imiz|miz)?\b"),
+    re.compile(r"\b(\d+)\s*[\.\s]*kam(?:damiz|imiz|miz)?\b"),
     re.compile(r"\b(bitta|ikkita|uchta)\s+kam\b"),
+    re.compile(r"\b(kamdamiz|kamimiz|kammiz)\b"),
+    # Drivers trading/swapping seats or passengers ("alishtiradiganlar bormi")
+    re.compile(r"\b(alishtir\w*|aloshtir\w*|almashtir\w*)\b"),
     # Driver seeking passengers to fill empty seats ("2 ta odam zarur/kerak")
     re.compile(r"\b(\d+|bitta|ikkita|uchta|to'rtta|tortta)\s*ta?\s*(odam|kishi|klient|klent|yo'lovchi|yolovchi)\s*(zarur|zarul|kerak|kerek|lozim)\b"),
     re.compile(r"\b(odam|kishi|klient|klent|yo'lovchi|yolovchi)\s+(zarur|zarul)\b"),
@@ -113,6 +118,8 @@ STRICT_NON_TRANSPORT_PATTERNS = [
     re.compile(r"\b(topganga\s+suyunchi|topganga\s+mukofot|topganga\s+xizmat|topib\s+olganlar\s+bo['`]?lsa|topib\s+olganga)\b", re.IGNORECASE),
     re.compile(r"\b(qidirilmoqda|qidirilyapti|yo['`]?qolganligi\s+sababli|yukolganligi\s+sababli)\b", re.IGNORECASE),
     re.compile(r"\b(iltimos\s+qaytarib\s+bering|ko['`]?rganlar\s+bo['`]?lsa|kurganlar\s+bulsa)\b", re.IGNORECASE),
+    # Telegram/Commercial Promo & Fuel Spam
+    re.compile(r"\b(salarka\s+bor|muzlatilgan\s+akkaunt|blok\s+bo['`]?lgan\s+akkaunt|uzum\s+marketda|premium\s+o['`]?rnataman|premium\s+ornataman)\b", re.IGNORECASE),
 ]
 
 def check_non_transport_patterns(norm: str) -> Optional[str]:
@@ -181,17 +188,19 @@ WORD_TO_NUM = {
 
 
 def _match_city_stem(word: str, suffixes: tuple) -> Optional[str]:
-    """Extract known city root handling optional possessive infixes (-i, -si)."""
+    """Extract known city root handling optional possessive infixes (-i, -si) and aliases."""
     for sfx in suffixes:
         if word.endswith(sfx) and len(word) > len(sfx) + 2:
             base = word[:-len(sfx)]
             if base in UZBEK_CITIES:
-                return base
+                return CITY_ALIASES.get(base, base)
             # Possessive infixes: aeroport-i-dan, markaz-i-ga
             if base.endswith("si") and base[:-2] in UZBEK_CITIES:
-                return base[:-2]
+                stem = base[:-2]
+                return CITY_ALIASES.get(stem, stem)
             if base.endswith("i") and base[:-1] in UZBEK_CITIES:
-                return base[:-1]
+                stem = base[:-1]
+                return CITY_ALIASES.get(stem, stem)
     return None
 
 
@@ -228,8 +237,18 @@ class RuleBasedClassifier(BaseClassifier):
 
         if not destination:
             for word in words:
-                if word in UZBEK_CITIES and word != origin:
-                    destination = word
+                if word in UZBEK_CITIES:
+                    canon = CITY_ALIASES.get(word, word)
+                    if canon != origin:
+                        destination = canon
+                        break
+
+        # If destination is explicitly known, allow locative "-da" ("Chilonzorda ... Toshkentga") as origin
+        if not origin and destination:
+            for word in words:
+                orig_match = _match_city_stem(word, ("da",))
+                if orig_match and orig_match != destination:
+                    origin = orig_match
                     break
 
         return origin, destination

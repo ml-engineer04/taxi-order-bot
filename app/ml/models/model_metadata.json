@@ -1,17 +1,18 @@
 {
-  "model_version": "2.0.0",
-  "created_at": "2026-11-06T16:59:03.885441+00:00",
+  "model_version": "3.0.0",
+  "created_at": "2026-11-10T18:51:51.074225+00:00",
   "model_type": "FeatureUnion(Word+Char n-grams) + Calibrated LinearSVC",
   "classes": [
     "DRIVER_OFFER",
     "OTHER",
     "PASSENGER_REQUEST"
   ],
-  "dataset_samples": 10024,
+  "real_unique_samples": 10555,
+  "dataset_samples": 14877,
   "test_metrics": {
-    "model_name": "Semantic Multi-Gram Calibrated Model",
-    "macro_f1": 0.9125,
-    "weighted_f1": 0.9012,
+    "model_name": "Honest Unseen Real Test Split",
+    "macro_f1": 0.8675,
+    "weighted_f1": 0.8577,
     "labels": [
       "DRIVER_OFFER",
       "OTHER",
@@ -19,68 +20,73 @@
     ],
     "confusion_matrix": [
       [
-        363,
-        3,
-        0
+        30,
+        4,
+        3
       ],
       [
         0,
-        485,
-        77
+        530,
+        143
       ],
       [
         0,
-        69,
-        510
+        74,
+        802
       ]
     ],
     "classification_report": {
       "DRIVER_OFFER": {
         "precision": 1.0,
-        "recall": 0.9918032786885246,
-        "f1-score": 0.9958847736625515,
-        "support": 366.0
+        "recall": 0.8108108108108109,
+        "f1-score": 0.8955223880597015,
+        "support": 37.0
       },
       "OTHER": {
-        "precision": 0.8707360861759426,
-        "recall": 0.8629893238434164,
-        "f1-score": 0.8668453976764968,
-        "support": 562.0
+        "precision": 0.8717105263157895,
+        "recall": 0.787518573551263,
+        "f1-score": 0.8274785323965652,
+        "support": 673.0
       },
       "PASSENGER_REQUEST": {
-        "precision": 0.868824531516184,
-        "recall": 0.8808290155440415,
-        "f1-score": 0.8747855917667239,
-        "support": 579.0
+        "precision": 0.8459915611814346,
+        "recall": 0.9155251141552512,
+        "f1-score": 0.8793859649122807,
+        "support": 876.0
       },
-      "accuracy": 0.9011280690112807,
+      "accuracy": 0.8587641866330391,
       "macro avg": {
-        "precision": 0.9131868725640423,
-        "recall": 0.9118738726919942,
-        "f1-score": 0.9125052543685906,
-        "support": 1507.0
+        "precision": 0.905900695832408,
+        "recall": 0.837951499505775,
+        "f1-score": 0.8674622951228491,
+        "support": 1586.0
       },
       "weighted avg": {
-        "precision": 0.9013955435824488,
-        "recall": 0.9011280690112807,
-        "f1-score": 0.901235433502069,
-        "support": 1507.0
+        "precision": 0.8604979771787282,
+        "recall": 0.8587641866330391,
+        "f1-score": 0.857736119750476,
+        "support": 1586.0
       }
     },
     "script_performance": {
       "latin": {
-        "correct": 1062,
-        "total": 1209
+        "correct": 1179,
+        "total": 1403
       },
       "cyrillic": {
-        "correct": 280,
-        "total": 282
+        "correct": 183,
+        "total": 183
       },
       "mixed": {
-        "correct": 16,
-        "total": 16
+        "correct": 0,
+        "total": 0
       }
     }
   },
-  "operating_confidence_threshold": 0.85
+  "operating_confidence_threshold": 0.85,
+  "asymmetric_thresholds": {
+    "driver_reject": 0.72,
+    "other_reject": 0.82,
+    "passenger_approve_with_full_route": 0.85
+  }
 }
