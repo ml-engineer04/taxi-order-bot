@@ -189,8 +189,8 @@ CARGO_PATTERNS = [
 
 # Unambiguous Passenger / Cargo Order Intent Patterns (used for safe single-city ML fast-path)
 PASSENGER_EXPLICIT_PATTERNS = re.compile(
-    r"\b(\d+|bitta|ikkita|uchta|torta|to['`]?rtta)?\s*(ta)?\s*(odam|kishi|ayol|yolovchi|yo['`]?lovchi|talaba)\s*bor\b|"
-    r"\b(\d+|bitta|ikkita|uchta|torta|to['`]?rtta)\s*(kishimiz|odammiz|kishi|odam)\b|"
+    r"\b(\d+|bitta|ikkita|uchta|torta|to['`]?rtta)?\s*(ta)?\s*(odam|kishi|kshi|ayol|yolovchi|yo['`]?lovchi|talaba)\s*bor\b|"
+    r"\b(\d+|bitta|ikkita|uchta|torta|to['`]?rtta)\s*(ta)?\s*(kishimiz|odammiz|kishi|kshi|odam|ayol|ayol\s+kishi|ayol\s+kshi|joy)\b|"
     r"\b(pochta|poshta|poshda|yuk|posilka|korobka)\s*bor\b|"
     r"\b(taksi|mashina|moshina)\s*(kerak|kerek|zarur|bormi|bormikan)\b|"
     r"\b(ketadigan|boradigan|yuradigan)\s*(bormi|bormikan|taksi|mashina)?\b|"
