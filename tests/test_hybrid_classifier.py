@@ -241,10 +241,10 @@ async def test_hybrid_timeout_preserves_high_conf_ml_order():
     base_mock = AsyncMock()
     base_mock.classify.return_value = ClassificationResult(
         is_passenger_request=True,
-        confidence=0.99,
-        origin="Toshkent",
+        confidence=0.75,
+        origin=None,
         destination=None,
-        reason="ML PASSENGER_REQUEST (confidence: 0.99)",
+        reason="ML PASSENGER_REQUEST (confidence: 0.75)",
         method="ml",
         predicted_label="PASSENGER_REQUEST",
     )
@@ -265,14 +265,49 @@ async def test_hybrid_timeout_preserves_high_conf_ml_order():
         threshold=0.85,
     )
 
-    res = await hybrid.classify("+998979600650 Toshkentdan pochta bor")
+    res = await hybrid.classify("+998979600650 bitta joy kerak")
     assert res.is_passenger_request is True
-    assert res.confidence == 0.99
+    assert res.confidence == 0.75
     assert res.method == "ml"
 
     # Transient AI failure should NOT be cached so next attempt can query AI again
-    await hybrid.classify("+998979600650 Toshkentdan pochta bor")
+    await hybrid.classify("+998979600650 bitta joy kerak")
     assert ai_mock.classify.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_hybrid_single_city_with_explicit_intent_skips_ai():
+    """Confident ML (>=0.88) with one city and explicit passenger intent skips DeepSeek entirely."""
+    base_mock = AsyncMock()
+    base_mock.classify.return_value = ClassificationResult(
+        is_passenger_request=True,
+        confidence=0.95,
+        origin="Toshkent",
+        destination=None,
+        reason="ML PASSENGER_REQUEST (confidence: 0.95)",
+        method="ml",
+        predicted_label="PASSENGER_REQUEST",
+    )
+
+    ai_mock = AsyncMock()
+    hybrid = HybridClassifier(
+        base_classifier=base_mock,
+        ai_classifier=ai_mock,
+        enable_ai=True,
+        threshold=0.85,
+    )
+
+    # 1. Single city + explicit passenger syntax -> skips AI
+    res = await hybrid.classify("Toshkentdan 1 kishi bor hozirga")
+    assert res.is_passenger_request is True
+    assert res.method == "ml"
+    assert ai_mock.classify.call_count == 0
+
+    # 2. Single city + cargo syntax -> skips AI
+    res2 = await hybrid.classify("+998979600650 Toshkentdan pochta bor")
+    assert res2.is_passenger_request is True
+    assert res2.method == "ml"
+    assert ai_mock.classify.call_count == 0
 
 
 @pytest.mark.asyncio

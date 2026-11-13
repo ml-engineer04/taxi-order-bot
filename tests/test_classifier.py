@@ -161,3 +161,41 @@ async def test_colloquial_city_aliases_and_suffixes():
     res3 = await classifier.classify("Beshariqtan 2 ta odam bor toshkenga")
     assert res3.origin == "Beshariq"
     assert res3.destination == "Toshkent"
+
+    res4 = await classifier.classify("Toshdan beshriqqa 1 kishi bor")
+    assert res4.origin == "Toshkent"
+    assert res4.destination == "Beshariq"
+
+    res5 = await classifier.classify("Sadoqattan Rishtonga 1 kishi bor")
+    assert res5.origin == "Sadoqat"
+    assert res5.destination == "Rishton"
+
+
+@pytest.mark.asyncio
+async def test_mountain_pass_and_road_condition_inquiries():
+    """Verify road condition / weather questions on Kamchik pass are rejected as non-transport."""
+    samples = [
+        "pereval ochiqmi akalar",
+        "kamchikda qor yog'yaptimi",
+        "yo'l ochiqmi shopirlar",
+        "postda turibman pereval yopiqmi",
+        "dovon qalay yursa bo'ladimi",
+    ]
+    for s in samples:
+        res = await classifier.classify(s)
+        assert res.is_passenger_request is False, f"Road condition allowed: {s}"
+        assert res.confidence <= 0.10
+
+
+@pytest.mark.asyncio
+async def test_driver_dispatch_begging_rejections():
+    """Verify drivers pleading for orders are strictly rejected."""
+    samples = [
+        "aka bering bitta zakaz",
+        "bervoring aka",
+        "bitta menga bering",
+        "aka chiqaring bitta",
+    ]
+    for s in samples:
+        res = await classifier.classify(s)
+        assert res.is_passenger_request is False, f"Driver plea allowed: {s}"

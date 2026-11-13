@@ -36,11 +36,14 @@ STRICT_DRIVER_PATTERNS = [
     re.compile(r"\b(menga|manga|manbaqa|bizga|bizgayam)\b[^\w\n]{0,25}\b(berila|berilar|beringlar|bering|bervorila|bervoringlar|bervoring|chiqaringlar|chiqarila|chiqaring|tashlang|tashavorila|ber)\b"),
     re.compile(r"\b(berila|berilar|beringlar|bering|bervorila|bervoringlar|bervoring|chiqaringlar|chiqarila|chiqaring)\b[^\w\n]{0,25}\b(menga|manga|manbaqa|bizga|bizgayam|ozim|o'zim)\b"),
     re.compile(r"\b(aka|oka|uka|akka|og'a|oga|brat)\b[^\w\n]{0,20}\b(bering|berila|berilar|beringlar|bervorila|bervoring|chiqaring|berin|ber|bervoringlar)\b"),
+    re.compile(r"\b(bering|berin|berila|berilar|bervorila|bervoring)\b[^\w\n]{0,20}\b(aka|oka|brat|akka)\b"),
+    re.compile(r"\b(bitta\s+menga\s+bering|manga\s+berila|menga\s+beringlar|manga\s+beringlar)\b"),
     re.compile(r"\b(man|men)\s+(olaman|olib\s+ketaman|opketaman|olamiz|olib\s+boraman)\b"),
     # Driver departure announcements: "yuryapman uje", "menda 2 ta bor yuryapman", "menda ayol bor turibman"
     re.compile(r"\b(menda|manda|bizda)\b.{0,35}\b(ayol|odam|kishi|joy)\s*bor\b.{0,35}\b(turibman|turibmiz|turib\s*bor|yuryapman|yuryabman|yurvomman)\b"),
     re.compile(r"\b(menda|manda)\b.{0,35}\b(yuryapman|yuryabman|yurvomman|yurvoman|yuri\s*apba|yuryapmiz|ketvomman|ketvommiz)\b"),
     re.compile(r"\b(yuryapman|yuryabman|yurvomman|yurvoman|yuri\s*apba)\s*(uje|xozir|hozir|shu\s*yerda)?\b"),
+    re.compile(r"\b(prosta\s+yo['`]?ldaydi|yo['`]?lda\s+ketayapman|yoldaman)\b"),
     # Driver announcements of already collected/on-board passengers:
     # "olib chiqdik", "alib chiqdi", "olib kettik", "olib keldik", "olib ketyapmiz", "olib yurdim"
     re.compile(r"\b(olib|alib|op)\s*(chiqdik|chiqdim|chiqdi|chiqyapmiz|kettik|ketdik|ketyapmiz|ketyapman|keldik|keldim|yurdim|yuryapmiz|boldik|bo'ldik)\b"),
@@ -118,6 +121,11 @@ STRICT_NON_TRANSPORT_PATTERNS = [
     re.compile(r"\b(topganga\s+suyunchi|topganga\s+mukofot|topganga\s+xizmat|topib\s+olganlar\s+bo['`]?lsa|topib\s+olganga)\b", re.IGNORECASE),
     re.compile(r"\b(qidirilmoqda|qidirilyapti|yo['`]?qolganligi\s+sababli|yukolganligi\s+sababli)\b", re.IGNORECASE),
     re.compile(r"\b(iltimos\s+qaytarib\s+bering|ko['`]?rganlar\s+bo['`]?lsa|kurganlar\s+bulsa)\b", re.IGNORECASE),
+    # Kamchik pass / Road conditions / Weather inquiries
+    re.compile(r"\b(pereval|kamchiq|kamchik|dovon|qamchiq|post|yo['`]?l|yol)\b.*?\b(ochiqmi|yopiqmi|yopildimi|ochildimi|qalay|qanaqa|qandoq|yuryaptimi|yursa\s+bo['`]?ladimi)\b", re.IGNORECASE),
+    re.compile(r"\b(ochiqmi|yopiqmi|yopildimi|ochildimi|yuryaptimi)\b.*?\b(pereval|kamchiq|kamchik|dovon|qamchiq|post|yo['`]?l|yol)\b", re.IGNORECASE),
+    re.compile(r"\b(qor\s+yog['`]?yaptimi|qor\s+yogdimi|qor\s+bormi|kamchiqda\s+qor|perevalda\s+qor|muzlama\b)", re.IGNORECASE),
+    re.compile(r"\b(havo\s+qanday|havo\s+qanaqa|kamchikda\s+havo|perevalda\s+havo)\b", re.IGNORECASE),
     # Telegram/Commercial Promo & Fuel Spam
     re.compile(r"\b(salarka\s+bor|muzlatilgan\s+akkaunt|blok\s+bo['`]?lgan\s+akkaunt|uzum\s+marketda|premium\s+o['`]?rnataman|premium\s+ornataman)\b", re.IGNORECASE),
 ]
@@ -178,6 +186,23 @@ CARGO_PATTERNS = [
     re.compile(r"\b(pochta|poshta|poshda|yuk|posilka)\s+(olib\s+ketadigan|opketadigan|boradigan|ketadigan)\s*(bormi|bormikan|taksi|mashina|moshina)?\b"),
     re.compile(r"\b(olib\s+ketadigan|opketadigan|boradigan)\s+(pochta|poshta|poshda|yuk|posilka)\s+bor\b"),
 ]
+
+# Unambiguous Passenger / Cargo Order Intent Patterns (used for safe single-city ML fast-path)
+PASSENGER_EXPLICIT_PATTERNS = re.compile(
+    r"\b(\d+|bitta|ikkita|uchta|torta|to['`]?rtta)?\s*(ta)?\s*(odam|kishi|ayol|yolovchi|yo['`]?lovchi|talaba)\s*bor\b|"
+    r"\b(\d+|bitta|ikkita|uchta|torta|to['`]?rtta)\s*(kishimiz|odammiz|kishi|odam)\b|"
+    r"\b(pochta|poshta|poshda|yuk|posilka|korobka)\s*bor\b|"
+    r"\b(taksi|mashina|moshina)\s*(kerak|kerek|zarur|bormi|bormikan)\b|"
+    r"\b(ketadigan|boradigan|yuradigan)\s*(bormi|bormikan|taksi|mashina)?\b|"
+    r"\b(boradiganlar|ketadiganlar)\s*(bormi|bormikan)\b|"
+    r"\b(oldi\s+mestaga|oldi\s+joyga)\s+(\d+|bitta)?\s*(odam|kishi|ayol)?\s*bor\b",
+    re.IGNORECASE,
+)
+
+
+def has_explicit_passenger_intent(norm: str) -> bool:
+    """Return True if normalized text contains explicit passenger or cargo intent."""
+    return bool(PASSENGER_EXPLICIT_PATTERNS.search(norm))
 
 WORD_TO_NUM = {
     "bitta": 1, "1": 1,

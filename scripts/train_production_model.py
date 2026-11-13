@@ -72,12 +72,17 @@ def generate_driver_templates():
 
 def generate_passenger_templates():
     """Generate balanced canonical passenger phrases across Uzbek cities."""
-    cities = [
+    cities_latin = [
         'Toshkent', 'Samarqand', 'Buxoro', 'Andijon', 'Namangan',
         'Farg\'ona', 'Qarshi', 'Termiz', 'Urganch',
         'Navoiy', 'Jizzax', 'Guliston', 'Qo\'qon',
     ]
-    templates = [
+    cities_cyr = [
+        'Тошкент', 'Самарқанд', 'Бухоро', 'Андижон', 'Фарғона',
+        'Наманган', 'Қарши', 'Термиз', 'Урганч',
+        'Навоий', 'Жиззах', 'Гулистон', 'Қўқон',
+    ]
+    templates_lat = [
         '{n} kishimiz, {c}ga ketamiz',
         '{n} kishimiz {c}ga ketamiz hozir',
         '{n} kishimiz {c}ga ketishimiz kerak',
@@ -86,16 +91,33 @@ def generate_passenger_templates():
         'Kim meni {c}dan olib ketishi mumkin?',
         'Bugun kechqurun {c}ga ketishim kerak',
     ]
+    templates_cyr = [
+        '{n} кишимиз, {c}га кетамиз',
+        '{n} кишимиз {c}га кетамиз ҳозир',
+        '{c}га {n} кишимиз кетамиз такси керак',
+        '{c}га {n} та жой керак',
+        'Бугун кечқурун {c}га кетишим керак',
+    ]
     generated = []
-    for c in cities:
+    for c in cities_latin:
         for n in [1, 2, 3, 4]:
-            for t in templates:
+            for t in templates_lat:
                 text = t.format(c=c, n=n)
                 generated.append({
                     'text': text,
                     'normalized': normalize_uzbek_text(text),
                     'label': 'PASSENGER_REQUEST',
                     'script': 'latin',
+                })
+    for c in cities_cyr:
+        for n in [1, 2, 3, 4]:
+            for t in templates_cyr:
+                text = t.format(c=c, n=n)
+                generated.append({
+                    'text': text,
+                    'normalized': normalize_uzbek_text(text),
+                    'label': 'PASSENGER_REQUEST',
+                    'script': 'cyrillic',
                 })
     return generated
 
@@ -134,7 +156,7 @@ def main():
 
     # 1. Honest out-of-sample evaluation (split real data BEFORE adding templates/oversampling)
     train_real, val_real, test_real = train_val_test_split(training, 0.70, 0.15, 0.15, random_seed=42)
-    eval_train = train_real + val_real + labeled * 5 + canonical_pos * 10 + driver_templates + passenger_templates
+    eval_train = train_real + val_real + labeled * 5 + canonical_pos * 10 + driver_templates + passenger_templates * 3
 
     X_eval_train = [x["text"] for x in eval_train]
     y_eval_train = [x["label"] for x in eval_train]
@@ -149,7 +171,7 @@ def main():
     logger.info("Honest Test Evaluation: Macro F1: %.4f | Weighted F1: %.4f", eval_res["macro_f1"], eval_res["weighted_f1"])
 
     # 2. Fit final production model on ALL clean real samples + canonical + templates
-    full_combined = list(training) + list(labeled) * 5 + canonical_pos * 10 + driver_templates + passenger_templates
+    full_combined = list(training) + list(labeled) * 5 + canonical_pos * 10 + driver_templates + passenger_templates * 3
     logger.info("Training Final Production Model on %d balanced samples...", len(full_combined))
     X_full = [x["text"] for x in full_combined]
     y_full = [x["label"] for x in full_combined]
@@ -164,7 +186,7 @@ def main():
     logger.info("Saved model to %s", model_path)
 
     metadata = {
-        "model_version": "3.0.0",
+        "model_version": "4.0.0",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "model_type": "FeatureUnion(Word+Char n-grams) + Calibrated LinearSVC",
         "classes": sorted(list(VALID_LABELS)),
@@ -174,8 +196,9 @@ def main():
         "operating_confidence_threshold": 0.85,
         "asymmetric_thresholds": {
             "driver_reject": 0.72,
-            "other_reject": 0.82,
+            "other_reject": 0.80,
             "passenger_approve_with_full_route": 0.85,
+            "passenger_approve_single_city_with_intent": 0.88,
         },
     }
 

@@ -41,7 +41,7 @@ class HybridClassifier(BaseClassifier):
         enable_ai: bool = False,
         threshold: float = 0.85,
         driver_reject_threshold: float = 0.72,
-        other_reject_threshold: float = 0.82,
+        other_reject_threshold: float = 0.80,
         reject_cache_ttl: int = 7200,
         order_cache_ttl: int = 900,
         max_cache_size: int = 5000,
@@ -94,14 +94,23 @@ class HybridClassifier(BaseClassifier):
         ttl = self.order_cache_ttl if res.is_passenger_request else self.reject_cache_ttl
         self._cache[key] = (now + ttl, res.model_copy())
 
-    def _needs_ai_review(self, result: ClassificationResult) -> Tuple[bool, bool]:
+    def _needs_ai_review(self, result: ClassificationResult, raw_text: str = "") -> Tuple[bool, bool]:
         """Return (should_query_ai, is_incomplete_route) using safe asymmetric thresholds."""
         lbl = result.predicted_label
         is_incomplete = result.is_passenger_request and not (result.origin and result.destination)
 
         if lbl == "PASSENGER_REQUEST":
+            # Fast-path 1: Both origin and destination explicitly recognized
             if result.is_passenger_request and result.origin and result.destination:
                 return False, False
+            # Fast-path 2: ML is highly confident (>=0.88), at least one city known,
+            # and message contains explicit passenger/cargo intent syntax
+            if result.confidence >= 0.88 and (result.origin or result.destination) and raw_text:
+                from app.services.normalization.transliterator import normalize_uzbek_text
+                from app.services.classification.rule_based import has_explicit_passenger_intent
+                norm = normalize_uzbek_text(raw_text)
+                if has_explicit_passenger_intent(norm):
+                    return False, False
             return True, is_incomplete
         if lbl == "DRIVER_OFFER":
             return (0.35 <= result.confidence < self.driver_reject_threshold), False
@@ -127,7 +136,7 @@ class HybridClassifier(BaseClassifier):
                 self._put_cached(cache_key, result)
             return result
 
-        should_query_ai, is_incomplete_route = self._needs_ai_review(result)
+        should_query_ai, is_incomplete_route = self._needs_ai_review(result, raw_text)
         if should_query_ai:
             logger.info(
                 "🤖 [HYBRID AI FALLBACK] Base ML score ambiguous (label=%s, conf=%.2f, incomplete_route=%s). Querying AI...",

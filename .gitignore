@@ -40,3 +40,6 @@ logs/
 *.log
 .DS_Store
 
+# Data exports
+data/taxi_training_dataset.*
+
