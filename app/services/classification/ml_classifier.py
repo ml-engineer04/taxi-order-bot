@@ -168,12 +168,14 @@ class MLClassifier(BaseClassifier):
         destination_str = destination.capitalize() if destination else None
 
         if label == "PASSENGER_REQUEST":
-            is_forwardable = confidence >= self.confidence_threshold
-            reason = (
-                f"ML PASSENGER_REQUEST (confidence: {confidence:.2f})"
-                if is_forwardable
-                else f"ML PASSENGER_REQUEST below threshold ({confidence:.2f} < {self.confidence_threshold:.2f})"
-            )
+            has_location = bool(origin_str or destination_str)
+            is_forwardable = (confidence >= self.confidence_threshold) and has_location
+            if not has_location:
+                reason = f"ML PASSENGER_REQUEST rejected: no route locations identified (confidence: {confidence:.2f})"
+            elif is_forwardable:
+                reason = f"ML PASSENGER_REQUEST (confidence: {confidence:.2f})"
+            else:
+                reason = f"ML PASSENGER_REQUEST below threshold ({confidence:.2f} < {self.confidence_threshold:.2f})"
             return ClassificationResult(
                 is_passenger_request=is_forwardable,
                 order_type=detected_order_type,

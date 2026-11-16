@@ -106,9 +106,14 @@ STRICT_NON_TRANSPORT_PATTERNS = [
     re.compile(r"\b(sherik|sheriklikka|sherikka)\s*(kerak|bolalarga|qizlarga|bolalar|qizlar|og'il|qiz|talaba)?\b", re.IGNORECASE),
     re.compile(r"\b(kvga|kvartiraga)\s+(sherik|bolalar|qizlar|ogil|qiz)\b", re.IGNORECASE),
     re.compile(r"\b(\d+|bir|ikki|uch|to'rt|tort)?\s*xona(li)?\s+(kv|kvartira|uy|dom)\b", re.IGNORECASE),
-    # Job / Employment / Vacancies
+    # Job / Employment / Vacancies / Side gigs / Daily pay ('ish kerak', 'ishga taklif', 'подработка', 'вакансия')
     re.compile(r"\b(ish|vakansiya|ishga|usta|santexnik|elektrik|oshpaz|ofitsiant|sotuvchi)\s+(kerak|bor|olamiz|qidiryapman|taklif)\b", re.IGNORECASE),
     re.compile(r"\b(ishga\s+taklif|ishga\s+olamiz|vakansiya|rezyume|rezume|cv)\b", re.IGNORECASE),
+    re.compile(r"\b(podrabotk\w*|подработк\w*|vakansi\w*|ваканси\w*|rabota\s+na|работа\s+на)\b", re.IGNORECASE),
+    re.compile(r"\b(na\s+ruki\s+za\s+smenu|на\s+руки\s+за\s+смену|za\s+smenu|за\s+смену|za\s+den|за\s+день|v\s+smenu|в\s+смену)\b", re.IGNORECASE),
+    re.compile(r"\b(oplata|platyat|zarplata|оплата|платят|зарплата)\s+(\d+|\w+)?\s*(na\s+ruki|на\s+руки|za\s+smenu|за\s+смену|za\s+den|за\s+день)\b", re.IGNORECASE),
+    re.compile(r"\b(uborka\s+pomesheni\w*|уборка\s+помещени\w*|rasstanovka\s+inventar\w*|расстановка\s+инвентар\w*)\b", re.IGNORECASE),
+    re.compile(r"\b(trebuyutsya|ищем\s+сотрудник|требуются|требуется)\b", re.IGNORECASE),
     # Electronics / Phone / Tech sales
     re.compile(r"\b(zaryadka|zaryadchik|remont|tamiri|ta'miri|zapchast|ekran|shina|balon|diska|moy\s+almashtirish)\b", re.IGNORECASE),
     re.compile(r"\b(telefon|iphone|ayfon|samsung|redmi|honor|noutbuk|kompyuter)\s+(sotiladi|sotaman|olaman|kerak|bor)\b", re.IGNORECASE),

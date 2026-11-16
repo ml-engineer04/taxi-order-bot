@@ -199,3 +199,15 @@ async def test_driver_dispatch_begging_rejections():
     for s in samples:
         res = await classifier.classify(s)
         assert res.is_passenger_request is False, f"Driver plea allowed: {s}"
+
+
+@pytest.mark.asyncio
+async def test_russian_job_spam_rejection():
+    """Verify Russian job/part-time scam ads are strictly rejected."""
+    samples = [
+        "Ребят, появилась подработка по подготовке спортивного комплекса. Расстановка инвентаря, уборка помещений и помощь сотрудникам. Оплата 3800 на руки за смену!",
+        "Есть подработка в цветочном хозяйстве. Нужно подготовить растения, рассортировать горшки и упаковать готовые заказы. Платят 3500 за день. Работа на 2–3 дня!",
+    ]
+    for s in samples:
+        res = await classifier.classify(s)
+        assert res.is_passenger_request is False, f"Russian job allowed: {s}"

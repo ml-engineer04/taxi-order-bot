@@ -50,11 +50,19 @@ UZBEK_CITIES = {
     "qo'yluq", "kuylyuk", "qoqon", "quqon", "kokon", "toshken", "toshkon", "tosh", "samarqan",
     "besharik", "beshriq", "bagdod", "bagdo", "bogdo", "uchkopri", "uchkopirik", "fargon", "andijo", "namanga",
     "sadoqat", "sadokhat", "yakkatut", "tamasha", "erkin", "uchuy", "sho'rsuv", "shorsuv", "choshtepa",
-    "qoplonbek", "shohimardon", "chashma", "xovos", "sirdaryo",
+    "qoplonbek", "qoplon", "shohimardon", "chashma", "xovos", "sirdaryo",
+    "ohangaron", "oxongaron", "ahangaran", "gazalkent", "g'azalkent", "xonobod", "ultarma", "pskent",
 }
 
 # Map colloquial/truncated/typo stems to canonical display form
 CITY_ALIASES = {
+    "oxongaron": "ohangaron",
+    "ahangaran": "ohangaron",
+    "gazalkent": "g'azalkent",
+    "qoplon": "qoplonbek",
+    "besharq": "beshariq",
+    "ultarma": "o'ltarma",
+    "pskent": "piskent",
     "tosh": "toshkent",
     "toshken": "toshkent",
     "toshkon": "toshkent",
