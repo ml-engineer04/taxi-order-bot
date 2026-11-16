@@ -186,7 +186,7 @@ def main():
     logger.info("Saved model to %s", model_path)
 
     metadata = {
-        "model_version": "4.0.0",
+        "model_version": "5.0.0",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "model_type": "FeatureUnion(Word+Char n-grams) + Calibrated LinearSVC",
         "classes": sorted(list(VALID_LABELS)),
