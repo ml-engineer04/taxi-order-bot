@@ -227,7 +227,7 @@ def get_classifier() -> BaseClassifier:
         return HybridClassifier(
             base_classifier=ml_classifier,
             ai_classifier=ai_provider,
-            enable_ai=has_ai_key,
+            enable_ai=has_ai_key and getattr(settings, "enable_llm_classifier", True),
             threshold=settings.classifier_confidence_threshold,
         )
 
