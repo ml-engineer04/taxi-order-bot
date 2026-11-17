@@ -86,7 +86,11 @@ class GroupManager:
             for n_id in self.settings.get_public_group_numeric_ids():
                 self._active_ids.update(self._expand_variants(n_id))
 
-        logger.info("GroupManager initialized with %d active monitored chat ID variant(s).", len(self._active_ids))
+        logger.info(
+            "GroupManager initialized with %d active monitored group(s) (%d ID variants).",
+            len(active_groups),
+            len(self._active_ids),
+        )
 
     def is_monitored(self, chat_id: int) -> bool:
         """Fast O(1) check if chat_id matches any active monitored group."""
