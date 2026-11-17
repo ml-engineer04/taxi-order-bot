@@ -211,3 +211,19 @@ async def test_russian_job_spam_rejection():
     for s in samples:
         res = await classifier.classify(s)
         assert res.is_passenger_request is False, f"Russian job allowed: {s}"
+
+
+@pytest.mark.asyncio
+async def test_commercial_food_hotel_and_driver_variants_rejections():
+    """Verify commercial food sales, hostel ads, and tricky driver announcements are strictly rejected."""
+    samples = [
+        "Дориликка БЕДАНА ГЎШТИ 🌿 Нархи: 70 минг пачкаси (пачкада 10 дона,1кг+-) Манзил: Қўқон (Етказиш текин шахар ичи) 🚚 Тел: +998911390283 📞",
+        "ТОШКЕНТДА ҚУЛАЙ ВА АРЗОН ✅ Тоза ва шинам хоналар 📌 Метро ва аэропортга яқин 💰 Нархлар (👥 киши бошига): • 40 000 сўм • 75 000 сўм 🚖 Шофёрлар учун махсус чегирмалар 🟢! ☎️ +998 94 136 00 78",
+        "Тошкентдан хозир юряпмиз Бувайдага 1 аел киши булса олип кетамиз 700585753 905085278",
+        "Тошкент дан 2 дона одам кам 944498422",
+        "Akalar Toshkentga bitta odam kerak beshariqdan bolsa berilar 9 10 larda ketiladi",
+    ]
+    for s in samples:
+        res = await classifier.classify(s)
+        assert res.is_passenger_request is False, f"Leaked message allowed: {s}"
+

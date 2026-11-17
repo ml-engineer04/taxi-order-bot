@@ -13,8 +13,9 @@ from app.services.normalization.transliterator import normalize_uzbek_text
 
 # Strict Negative Patterns: Definitive driver offers, vehicle capacity, or collection announcements
 STRICT_DRIVER_PATTERNS = [
-    # Uzbek taxi driver slang: "X ta kam", "1 odam kam", "kamdamiz" (avoids matching passenger "bittakam")
+    # Uzbek taxi driver slang: "X ta kam", "1 odam kam", "2 dona odam kam", "kamdamiz" (avoids matching passenger "bittakam")
     re.compile(r"\b(\d+|bitta|ikkita|uchta|to'rtta|tortta)?\s*ta?\s*(odam|kishi|joy)?[\s\.\-_]*kam\b"),
+    re.compile(r"\b(?:\d+|bitta|ikkita|uchta|to'rtta|tortta)\s+dona\s+(?:odam|kishi|joy)?[\s\.\-_]*kam(?:damiz|imiz|miz)?\b"),
     re.compile(r"\b(?:\d+|bitta|ikkita|uchta|to'rtta|tortta)\s+(?:ta[\s\.\-_]+)?(?:odam|kishi|joy)[\s\.\-_]+kam(?:damiz|imiz|miz)?\b"),
     re.compile(r"\b(\d+)\s*[\.\s]*kam(?:damiz|imiz|miz)?\b"),
     re.compile(r"\b(bitta|ikkita|uchta)\s+kam\b"),
@@ -25,7 +26,9 @@ STRICT_DRIVER_PATTERNS = [
     re.compile(r"\b(\d+|bitta|ikkita|uchta|to'rtta|tortta)\s*ta?\s*(odam|kishi|klient|klent|yo'lovchi|yolovchi)\s*(zarur|zarul|kerak|kerek|lozim)\b"),
     re.compile(r"\b(odam|kishi|klient|klent|yo'lovchi|yolovchi)\s+(zarur|zarul)\b"),
     # Picking up passengers or cargo ("poshta olaman", "odam olamiz", "pochta olmiz", "4 odam pochta olmiz")
-    re.compile(r"\b(odam|yolovchi|yo'lovchi|klient|klent)\b[^\w\n]{0,30}\b(ham\s+)?(olaman|olamiz|olamz|olamiza|olmiz|olimiz)\b"),
+    re.compile(r"\b(odam|yolovchi|yo'lovchi|klient|klent|ayol|ayollar|ayel)\b[^\w\n]{0,30}\b(ham\s+)?(olaman|olamiz|olamz|olamiza|olmiz|olimiz|olib\s*ketamiz|olip\s*ketamiz|opketamiz|olib\s*boramiz|olip\s*boramiz)\b"),
+    re.compile(r"\b(?:ayol|ayollar|ayel|odam|kishi)\s+(?:kishi\s+)?(?:bo['`]?lsa|bolsa|bulsa|bosa)\s+(?:olib|olip|alib|alip|op)\s*(?:ketamiz|ketaman|boramiz|boraman)\b"),
+    re.compile(r"\b(olib|olip|alib|alip|op)\s*(ketamiz|ketaman|boramiz|boraman|ketvommiz|ketvomiz|ketayapmiz|boryapmiz|borvomiz)\b"),
     re.compile(r"\b(pochta|poshta|poshda|pochtalar|poshtalar|yuk|posilka)\b[^\w\n]{0,30}\b(ham\s+)?(olaman|olamiz|olamz|olamiza|olmiz|olimiz|opketaman|opketamiz)\b"),
     re.compile(r"\b(olaman|olamiz|olamz|olamiza|olmiz|olimiz|opketaman|opketamiz)\b[^\w\n]{0,30}\b(ham\s+)?(pochta|poshta|poshda|pochtalar|poshtalar|yuk|posilka|odam|yolovchi|yo'lovchi)\b"),
     re.compile(r"\b(\d+|bitta|ikkita|uchta|to'rtta|tortta)?\s*(ta)?\s*(odam|kishi|joy)?[\s\.\-_]*(pochta|poshta|poshda|yuk)?[\s\.\-_]*(olaman|olamiz|olamz|olamiza|olmiz|olimiz)\b"),
@@ -39,10 +42,16 @@ STRICT_DRIVER_PATTERNS = [
     re.compile(r"\b(bering|berin|berila|berilar|bervorila|bervoring)\b[^\w\n]{0,20}\b(aka|oka|brat|akka)\b"),
     re.compile(r"\b(bitta\s+menga\s+bering|manga\s+berila|menga\s+beringlar|manga\s+beringlar)\b"),
     re.compile(r"\b(man|men)\s+(olaman|olib\s+ketaman|opketaman|olamiz|olib\s+boraman)\b"),
-    # Driver departure announcements: "yuryapman uje", "menda 2 ta bor yuryapman", "menda ayol bor turibman"
+    # Driver soliciting dispatcher orders / asking for passengers ("odam kerak beshariqdan bolsa berilar", "bolsa berilar")
+    re.compile(r"\b(?:odam|kishi|ayol|ayel|pochta|poshta)\s+(?:kerak|zarur|lozim)\b.{0,40}\b(?:bo['`]?lsa|bolsa|bulsa|bosa)\s+(?:berilar|beringlar|berila|tashang|tashanglar|tashavoring|chiqaring)\b"),
+    re.compile(r"\b(?:bo['`]?lsa|bolsa|bulsa|bosa)\s+(?:berilar|beringlar|berila|tashavoringlar|tashavorilar)\b"),
+    re.compile(r"\b(?:\d+\s+)?(?:\d+)\s*larda\s+(?:ketiladi|yuriladi|ketamiz|yuramiz)\b"),
+    # Driver departure announcements: "yuryapman uje", "hozir yuryapmiz", "menda 2 ta bor yuryapman", "menda ayol bor turibman"
     re.compile(r"\b(menda|manda|bizda)\b.{0,35}\b(ayol|odam|kishi|joy)\s*bor\b.{0,35}\b(turibman|turibmiz|turib\s*bor|yuryapman|yuryabman|yurvomman)\b"),
     re.compile(r"\b(menda|manda)\b.{0,35}\b(yuryapman|yuryabman|yurvomman|yurvoman|yuri\s*apba|yuryapmiz|ketvomman|ketvommiz)\b"),
-    re.compile(r"\b(yuryapman|yuryabman|yurvomman|yurvoman|yuri\s*apba)\s*(uje|xozir|hozir|shu\s*yerda)?\b"),
+    re.compile(r"\b(yuryapmiz|yuryabmiz|yuribmiz|yurvomiz|yurvommiz|ketvomiz|ketvommiz|ketayapmiz)\b"),
+    re.compile(r"\b(xozir|hozir)\s+(yuryapmiz|yuryabmiz|yuribmiz|yurvomiz|yurvommiz|ketayapmiz|ketvomiz|ketamiz|yuramiz)\b"),
+    re.compile(r"\b(yuryapman|yuryabman|yurvomman|yurvoman|yuri\s*apba|yuryapmiz|yuryabmiz|yuribmiz|yurvomiz)\s*(uje|xozir|hozir|shu\s*yerda)?\b"),
     re.compile(r"\b(prosta\s+yo['`]?ldaydi|yo['`]?lda\s+ketayapman|yoldaman)\b"),
     # Driver announcements of already collected/on-board passengers:
     # "olib chiqdik", "alib chiqdi", "olib kettik", "olib keldik", "olib ketyapmiz", "olib yurdim"
@@ -131,6 +140,19 @@ STRICT_NON_TRANSPORT_PATTERNS = [
     re.compile(r"\b(ochiqmi|yopiqmi|yopildimi|ochildimi|yuryaptimi)\b.*?\b(pereval|kamchiq|kamchik|dovon|qamchiq|post|yo['`]?l|yol)\b", re.IGNORECASE),
     re.compile(r"\b(qor\s+yog['`]?yaptimi|qor\s+yogdimi|qor\s+bormi|kamchiqda\s+qor|perevalda\s+qor|muzlama\b)", re.IGNORECASE),
     re.compile(r"\b(havo\s+qanday|havo\s+qanaqa|kamchikda\s+havo|perevalda\s+havo)\b", re.IGNORECASE),
+    # Commercial Food, Grocery, Farm Products & Delivery ('bedana go'shti', 'narxi: 70 ming', 'yetkazish tekin')
+    re.compile(r"\b(bedana|bedanani|gosht|go'sht|goshti|go'shti|tuxum|tuxumi|somsa|osh|shashlik|asal|shirinlik|muzqaymoq)\b.*?\b(narxi|ming|som|so'm|pachka|pachkasi|dona|kg|kilogramm|gramm|dastavka|yetkazish|yetkazib)\b", re.IGNORECASE),
+    re.compile(r"\b(narxi|dastavka|yetkazish|yetkazib)\b.*?\b(bedana|gosht|go'sht|tuxum|somsa|osh|shashlik|asal)\b", re.IGNORECASE),
+    re.compile(r"\b(yetkazish|dastavka|yetkazib\s+berish)\s+(tekin|bepul|mavjud|xizmati)\b", re.IGNORECASE),
+    re.compile(r"\b(bedana\s+go['`]?shti|bedana\s+tuxumi)\b", re.IGNORECASE),
+    re.compile(r"\b(dorilikka|iste['`]?molga|iste['`]?mol\s+uchun)\s+(bedana|gosht|go'sht|tuxum|asal)\b", re.IGNORECASE),
+    # Hostel / Hotel / Room rentals / Per-person lodging ('shinam xonalar', 'kishi boshiga', 'hostel')
+    re.compile(r"\b(shinam|toza|qulay)\s+(?:va\s+shinam\s+)?(?:xona|xonalar)\b", re.IGNORECASE),
+    re.compile(r"\b(toza\s+va\s+shinam|shinam\s+va\s+toza)\b", re.IGNORECASE),
+    re.compile(r"\b(hostel|gostinitsa|gostinisa|mehmonxona|otel)\b", re.IGNORECASE),
+    re.compile(r"\b(kishi|odam)\s+boshiga\s*:\s*\d+", re.IGNORECASE),
+    re.compile(r"\b(metro\s+va\s+aeroportga\s+yaqin|aeroportga\s+yaqin|metroga\s+yaqin)\b", re.IGNORECASE),
+    re.compile(r"\b(shofyorlar|haydovchilar)\s+uchun\s+(?:maxsus\s+)?chegirma\b", re.IGNORECASE),
     # Telegram/Commercial Promo & Fuel Spam
     re.compile(r"\b(salarka\s+bor|muzlatilgan\s+akkaunt|blok\s+bo['`]?lgan\s+akkaunt|uzum\s+marketda|premium\s+o['`]?rnataman|premium\s+ornataman)\b", re.IGNORECASE),
 ]
