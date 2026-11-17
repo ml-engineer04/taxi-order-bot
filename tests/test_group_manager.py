@@ -133,3 +133,57 @@ async def test_admin_handlers_add_and_del_group():
         if rec:
             await session.delete(rec)
             await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_groups_pagination_and_navigation():
+    """Verify render_groups_page and page switching callbacks."""
+    from app.handlers.admin import render_groups_page, handle_groups_page_callback
+    from app.database.models.monitored_group import MonitoredGroupRecord
+
+    # Create 25 mock groups
+    mock_groups = [
+        MonitoredGroupRecord(id=i, chat_id=-1001000 + i, title=f"Guruh {i}", is_active=True)
+        for i in range(1, 26)
+    ]
+
+    # Page 1 (items 1-10)
+    text1, markup1 = render_groups_page(mock_groups, page=1, page_size=10)
+    assert "Sahifa: 1 / 3" in text1
+    assert "1. Guruh 1" in text1
+    assert "10. Guruh 10" in text1
+    assert "11. Guruh 11" not in text1
+    # Check Next button exists and no Prev button on page 1
+    button_texts1 = [b.text for row in markup1.inline_keyboard for b in row]
+    assert "Keyingi ▶️" in button_texts1
+    assert "◀️ Oldingi" not in button_texts1
+
+    # Page 2 (items 11-20)
+    text2, markup2 = render_groups_page(mock_groups, page=2, page_size=10)
+    assert "Sahifa: 2 / 3" in text2
+    assert "11. Guruh 11" in text2
+    assert "20. Guruh 20" in text2
+    button_texts2 = [b.text for row in markup2.inline_keyboard for b in row]
+    assert "◀️ Oldingi" in button_texts2
+    assert "Keyingi ▶️" in button_texts2
+
+    # Page 3 (items 21-25)
+    text3, markup3 = render_groups_page(mock_groups, page=3, page_size=10)
+    assert "Sahifa: 3 / 3" in text3
+    assert "21. Guruh 21" in text3
+    assert "25. Guruh 25" in text3
+    button_texts3 = [b.text for row in markup3.inline_keyboard for b in row]
+    assert "◀️ Oldingi" in button_texts3
+    assert "Keyingi ▶️" not in button_texts3
+
+    # Test callback navigation
+    mock_cb = MagicMock()
+    mock_cb.from_user = MagicMock(id=8120241913)
+    mock_cb.data = "grp_page:2"
+    mock_cb.message = AsyncMock()
+    mock_cb.answer = AsyncMock()
+
+    await handle_groups_page_callback(mock_cb)
+    mock_cb.message.edit_text.assert_called_once()
+    mock_cb.answer.assert_called_once()
+

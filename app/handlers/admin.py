@@ -608,9 +608,83 @@ async def handle_retrain(message: types.Message) -> None:
     await status_msg.edit_text(summary, parse_mode="HTML")
 
 
+def render_groups_page(
+    groups: list,
+    page: int = 1,
+    page_size: int = 10,
+) -> tuple[str, types.InlineKeyboardMarkup]:
+    """Render a paginated view of monitored groups (10 per page) with Next/Prev buttons."""
+    total_groups = len(groups)
+    total_pages = max(1, (total_groups + page_size - 1) // page_size)
+    page = max(1, min(page, total_pages))
+
+    start_idx = (page - 1) * page_size
+    end_idx = min(start_idx + page_size, total_groups)
+    page_groups = groups[start_idx:end_idx]
+
+    lines = [
+        "📋 <b>KUZATILAYOTGAN GURUHLAR RO'YXATI:</b>",
+        f"<i>Sahifa: {page} / {total_pages} (Jami: {total_groups} ta guruh)</i>",
+        "━━━━━━━━━━━━━━━━━━━━",
+    ]
+
+    builder = InlineKeyboardBuilder()
+
+    # List groups for this page
+    for idx, grp in enumerate(page_groups, start=start_idx + 1):
+        name = grp.title or f"Guruh ({grp.chat_id})"
+        lines.append(f"<b>{idx}. {name}</b>")
+        lines.append(f"   🆔 ID: <code>{grp.chat_id}</code>")
+        if grp.username:
+            lines.append(f"   🏷 Username: @{grp.username}")
+        lines.append("")
+
+        # Delete button for each group on this page
+        builder.button(
+            text=f"🗑 {idx}. O'chirish",
+            callback_data=f"del_grp:{grp.chat_id}:{page}",
+        )
+
+    lines.append("━━━━━━━━━━━━━━━━━━━━")
+    lines.append(f"📊 <i>Jami faol guruhlar: {total_groups} ta</i>")
+    lines.append(f"📄 <i>Sahifa: {page} / {total_pages}</i>\n")
+    lines.append("➕ <b>Yangi guruh qo'shish:</b>\n<code>/addgroup &lt;ID yoki link&gt;</code>\n")
+    lines.append("❌ <b>Guruhni o'chirish:</b>\n<code>/delgroup &lt;ID&gt;</code>")
+
+    # Group delete buttons 2 per row
+    builder.adjust(2)
+
+    # Navigation buttons row
+    nav_buttons = []
+    if page > 1:
+        nav_buttons.append(
+            types.InlineKeyboardButton(
+                text="◀️ Oldingi",
+                callback_data=f"grp_page:{page - 1}",
+            )
+        )
+    nav_buttons.append(
+        types.InlineKeyboardButton(
+            text=f"📄 {page}/{total_pages}",
+            callback_data=f"grp_noop:{page}",
+        )
+    )
+    if page < total_pages:
+        nav_buttons.append(
+            types.InlineKeyboardButton(
+                text="Keyingi ▶️",
+                callback_data=f"grp_page:{page + 1}",
+            )
+        )
+
+    builder.row(*nav_buttons)
+
+    return "\n".join(lines), builder.as_markup()
+
+
 @admin_router.message(Command("groups", "guruhlar"))
 async def handle_list_groups(message: types.Message) -> None:
-    """Display list of all dynamically monitored public groups."""
+    """Display paginated list of all dynamically monitored public groups."""
     user = message.from_user
     if not user or not is_admin(user.id):
         await message.answer("⛔ <i>Bu buyruq faqat administratorlar uchun mo'ljallangan.</i>", parse_mode="HTML")
@@ -631,30 +705,55 @@ async def handle_list_groups(message: types.Message) -> None:
         await message.answer(text, parse_mode="HTML")
         return
 
-    lines = [
-        "📋 <b>KUZATILAYOTGAN GURUHLAR RO'YXATI:</b>",
-        "━━━━━━━━━━━━━━━━━━━━",
-    ]
-    builder = InlineKeyboardBuilder()
+    text, markup = render_groups_page(groups, page=1, page_size=10)
+    await message.answer(text, reply_markup=markup, parse_mode="HTML")
 
-    for idx, grp in enumerate(groups, start=1):
-        name = grp.title or f"Guruh ({grp.chat_id})"
-        lines.append(f"<b>{idx}. {name}</b>")
-        lines.append(f"   🆔 ID: <code>{grp.chat_id}</code>")
-        if grp.username:
-            lines.append(f"   🏷 Username: @{grp.username}")
-        lines.append("")
 
-        btn_label = f"🗑 O'chirish: {name[:16]}"
-        builder.button(text=btn_label, callback_data=f"del_grp:{grp.chat_id}")
+@admin_router.callback_query(F.data.startswith("grp_page:"))
+async def handle_groups_page_callback(callback: types.CallbackQuery) -> None:
+    """Switch pages for the monitored groups list."""
+    user = callback.from_user
+    if not user or not is_admin(user.id):
+        await callback.answer("⛔ Ruxsat berilmagan!", show_alert=True)
+        return
 
-    lines.append("━━━━━━━━━━━━━━━━━━━━")
-    lines.append(f"📊 <i>Jami faol guruhlar: {len(groups)} ta</i>\n")
-    lines.append("➕ <b>Yangi guruh qo'shish:</b>\n<code>/addgroup &lt;ID yoki @username yoki havola&gt;</code>\n")
-    lines.append("❌ <b>Guruhni o'chirish:</b>\n<code>/delgroup &lt;ID&gt;</code>")
+    try:
+        page = int(callback.data.split(":")[1])
+    except (IndexError, ValueError):
+        page = 1
 
-    builder.adjust(1)
-    await message.answer("\n".join(lines), reply_markup=builder.as_markup(), parse_mode="HTML")
+    from app.services.group_manager import get_group_manager
+    group_mgr = get_group_manager()
+    groups = await group_mgr.get_all_groups()
+
+    if not groups:
+        if callback.message:
+            await callback.message.edit_text(
+                "📋 <b>KUZATILAYOTGAN GURUHLAR RO'YXATI:</b>\n\n"
+                "<i>Hozircha birorta ham guruh kuzatilmayapti.</i>\n\n"
+                "➕ <b>Guruh qo'shish uchun:</b>\n<code>/addgroup &lt;ID yoki link&gt;</code>",
+                parse_mode="HTML",
+            )
+        await callback.answer()
+        return
+
+    text, markup = render_groups_page(groups, page=page, page_size=10)
+    if callback.message:
+        try:
+            await callback.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
+        except Exception:
+            pass
+    await callback.answer()
+
+
+@admin_router.callback_query(F.data.startswith("grp_noop:"))
+async def handle_groups_noop_callback(callback: types.CallbackQuery) -> None:
+    """Handle tap on current page indicator button."""
+    try:
+        page = callback.data.split(":")[1]
+        await callback.answer(f"Hozirgi sahifa: {page}")
+    except Exception:
+        await callback.answer()
 
 
 @admin_router.message(Command("addgroup", "qosh"))
@@ -722,20 +821,23 @@ async def handle_remove_group(message: types.Message) -> None:
 
 @admin_router.callback_query(F.data.startswith("del_grp:"))
 async def handle_delete_group_callback(callback: types.CallbackQuery) -> None:
-    """Handle interactive inline group deletion."""
+    """Handle interactive inline group deletion with pagination support."""
     user = callback.from_user
     if not user or not is_admin(user.id):
         await callback.answer("⛔ Ruxsat berilmagan!", show_alert=True)
         return
 
-    chat_id_str = callback.data.split(":", 1)[1]
+    data_parts = callback.data.split(":")
+    chat_id_str = data_parts[1]
+    page = int(data_parts[2]) if len(data_parts) > 2 and data_parts[2].isdigit() else 1
+
     from app.services.group_manager import get_group_manager
     group_mgr = get_group_manager()
 
     success, reply_text = await group_mgr.remove_group(chat_id_str)
     await callback.answer("Guruh kuzatuvdan olib tashlandi!", show_alert=True)
 
-    # Refresh the list view
+    # Refresh the paginated list view
     groups = await group_mgr.get_all_groups()
     if not groups:
         if callback.message:
@@ -747,28 +849,12 @@ async def handle_delete_group_callback(callback: types.CallbackQuery) -> None:
             )
         return
 
-    lines = [
-        "📋 <b>KUZATILAYOTGAN GURUHLAR RO'YXATI:</b>",
-        "━━━━━━━━━━━━━━━━━━━━",
-    ]
-    builder = InlineKeyboardBuilder()
-    for idx, grp in enumerate(groups, start=1):
-        name = grp.title or f"Guruh ({grp.chat_id})"
-        lines.append(f"<b>{idx}. {name}</b>")
-        lines.append(f"   🆔 ID: <code>{grp.chat_id}</code>")
-        if grp.username:
-            lines.append(f"   🏷 Username: @{grp.username}")
-        lines.append("")
-        builder.button(text=f"🗑 O'chirish: {name[:16]}", callback_data=f"del_grp:{grp.chat_id}")
-
-    lines.append("━━━━━━━━━━━━━━━━━━━━")
-    lines.append(f"📊 <i>Jami faol guruhlar: {len(groups)} ta</i>\n")
-    lines.append("➕ <b>Yangi guruh qo'shish:</b>\n<code>/addgroup &lt;ID yoki link&gt;</code>\n")
-    lines.append("❌ <b>Guruhni o'chirish:</b>\n<code>/delgroup &lt;ID&gt;</code>")
-
-    builder.adjust(1)
+    text, markup = render_groups_page(groups, page=page, page_size=10)
     if callback.message:
-        await callback.message.edit_text("\n".join(lines), reply_markup=builder.as_markup(), parse_mode="HTML")
+        try:
+            await callback.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
+        except Exception:
+            pass
 
 
 @admin_router.message(F.chat.type == ChatType.PRIVATE, ~F.text.startswith("/"))

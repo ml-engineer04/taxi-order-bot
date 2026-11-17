@@ -97,8 +97,8 @@ class MonitoredGroupRepository:
 
     @staticmethod
     async def get_all_active(session: AsyncSession) -> List[MonitoredGroupRecord]:
-        """Fetch all active monitored groups ordered by creation time."""
-        query = select(MonitoredGroupRecord).where(MonitoredGroupRecord.is_active == True).order_by(MonitoredGroupRecord.id.asc())
+        """Fetch all active monitored groups ordered by newest first."""
+        query = select(MonitoredGroupRecord).where(MonitoredGroupRecord.is_active == True).order_by(MonitoredGroupRecord.id.desc())
         result = await session.execute(query)
         return list(result.scalars().all())
 
